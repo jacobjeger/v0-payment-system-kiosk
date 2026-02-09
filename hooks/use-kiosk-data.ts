@@ -14,9 +14,9 @@ export function useKioskData(initialData?: KioskData) {
     fetcher,
     {
       fallbackData: initialData,
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnReconnect: true,
-      refreshInterval: 30000, // Refresh every 30 seconds
+      refreshInterval: 0, // Don't auto-refresh (prevents unnecessary reloads)
       dedupingInterval: 5000, // Dedupe requests within 5 seconds
     }
   );

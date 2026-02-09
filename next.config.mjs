@@ -6,6 +6,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Enable experimental optimizations for faster navigation
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
 }
 
 export default nextConfig

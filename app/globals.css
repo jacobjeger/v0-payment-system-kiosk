@@ -1,0 +1,174 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Clean light theme - warm off-white with slate accents */
+  --background: 40 20% 98%;
+  --foreground: 240 10% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 10%;
+  --primary: 240 10% 10%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 10% 94%;
+  --secondary-foreground: 240 10% 20%;
+  --muted: 40 10% 94%;
+  --muted-foreground: 240 5% 45%;
+  --accent: 40 15% 92%;
+  --accent-foreground: 240 10% 10%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 40 10% 88%;
+  --input: 40 10% 88%;
+  --ring: 240 10% 10%;
+  --radius: 0.625rem;
+  
+  /* Kiosk specific tokens - warm light theme */
+  --kiosk-bg: 40 20% 97%;
+  --kiosk-surface: 0 0% 100%;
+  --kiosk-surface-hover: 40 15% 96%;
+  --kiosk-border: 40 10% 88%;
+  --kiosk-accent: 240 10% 10%;
+  --kiosk-text: 240 10% 10%;
+  --kiosk-text-muted: 240 5% 45%;
+  
+  /* Admin sidebar - keeps dark for contrast */
+  --sidebar: 240 10% 8%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-primary: 0 0% 100%;
+  --sidebar-primary-foreground: 240 10% 10%;
+  --sidebar-accent: 240 8% 14%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-border: 240 8% 16%;
+  --sidebar-ring: 0 0% 100%;
+}
+
+.dark {
+  --background: 240 10% 8%;
+  --foreground: 0 0% 95%;
+  --card: 240 10% 10%;
+  --card-foreground: 0 0% 95%;
+  --popover: 240 10% 10%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 240 10% 10%;
+  --secondary: 240 8% 14%;
+  --secondary-foreground: 0 0% 90%;
+  --muted: 240 8% 14%;
+  --muted-foreground: 240 5% 55%;
+  --accent: 240 8% 16%;
+  --accent-foreground: 0 0% 95%;
+  --destructive: 0 72% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 8% 18%;
+  --input: 240 8% 18%;
+  --ring: 0 0% 100%;
+}
+
+@theme inline {
+  --font-sans: 'Inter', 'Inter Fallback', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* Tabular numbers for amounts */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kiosk touch optimization */
+.kiosk-touch {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+/* Button press effect */
+.btn-press {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* Success checkmark animation */
+@keyframes check-draw {
+  0% { stroke-dashoffset: 50; }
+  100% { stroke-dashoffset: 0; }
+}
+.check-animate {
+  stroke-dasharray: 50;
+  animation: check-draw 0.4s ease-out forwards;
+}
+
+/* Pulse animation for loading */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.pulse-soft {
+  animation: pulse-soft 1.5s ease-in-out infinite;
+}

@@ -1,0 +1,12 @@
+{
+  "name": "pdca-offline-kiosk",
+  "version": "1.0.0",
+  "description": "PDCA offline Android kiosk app build configuration",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:kiosk": "bash scripts/build-kiosk.sh",
+    "start": "next start",
+    "lint": "next lint"
+  }
+}

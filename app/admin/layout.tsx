@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -65,8 +65,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const initRef = useRef(false);
 
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+
     const supabase = createClient();
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -95,7 +99,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (adminData?.mfa_enabled) {
         // Generate device fingerprint
         const deviceFingerprint = generateDeviceFingerprint();
-        console.log("[v0] Admin layout - checking device fingerprint:", deviceFingerprint);
         
         // Check if this device is trusted by querying the database directly
         const { data: trustedDevice, error: deviceError } = await supabase
@@ -103,19 +106,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           .select("id, device_fingerprint")
           .eq("admin_user_id", adminData.id)
           .eq("device_fingerprint", deviceFingerprint)
-          .maybeSingle(); // Use maybeSingle to avoid error when no rows found
-        
-        console.log("[v0] Admin layout - trusted device result:", { trustedDevice, deviceError });
+          .maybeSingle();
         
         // If device is not trusted, require MFA verification
         if (!trustedDevice) {
-          console.log("[v0] Admin layout - device not trusted, redirecting to MFA");
           // Redirect to MFA verification page outside admin layout
           router.push(`/auth/mfa-verify?admin_id=${adminData.id}&email=${encodeURIComponent(user.email!)}&device=${encodeURIComponent(deviceFingerprint)}`);
           return;
         }
-        
-        console.log("[v0] Admin layout - device is trusted, allowing access");
       }
       
       setUser(user);
@@ -198,6 +196,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
                   onClick={() => setSidebarOpen(false)}
                   className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive

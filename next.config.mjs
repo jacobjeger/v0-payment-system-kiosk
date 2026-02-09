@@ -6,7 +6,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  output: process.env.KIOSK_BUILD === 'true' ? 'export' : undefined,
 }
 
 export default nextConfig

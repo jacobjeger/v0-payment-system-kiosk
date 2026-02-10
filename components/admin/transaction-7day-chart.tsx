@@ -2,33 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface DailyTotal {
+interface DailyTransaction {
   date: string;
-  amount: number;
   count: number;
+  amount: number;
 }
 
-interface DailyTotalsChartProps {
-  businessId: string;
-  activeDaysAverage?: boolean;
-}
-
-export function DailyTotalsChart({ businessId, activeDaysAverage = false }: DailyTotalsChartProps) {
-  const [data, setData] = useState<DailyTotal[]>([]);
+export function Transaction7DayChart() {
+  const [data, setData] = useState<DailyTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDailyTotals();
-  }, [businessId, activeDaysAverage]);
+    loadLast7Days();
+  }, []);
 
-  async function loadDailyTotals() {
+  async function loadLast7Days() {
     setLoading(true);
     const supabase = createClient();
 
-    // Get last 7 days of transactions
+    // Get last 7 days of transactions from all businesses
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 6);
     const endDate = new Date();
@@ -37,7 +32,6 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
     const { data: transactions } = await supabase
       .from("transactions")
       .select("amount, created_at")
-      .eq("business_id", businessId)
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
 
@@ -69,28 +63,24 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
 
     const chartData = Array.from(dailyMap.entries()).map(([date, { amount, count }]) => ({
       date,
-      amount: Math.round(amount * 100) / 100,
       count,
+      amount: Math.round(amount * 100) / 100,
     }));
 
     setData(chartData);
     setLoading(false);
   }
 
-  const total = data.reduce((sum, d) => sum + d.amount, 0);
-  const activeDays = data.filter(d => d.count > 0).length;
-  const divisor = activeDaysAverage ? Math.max(activeDays, 1) : Math.max(data.length, 1);
-  const avgDaily = total / divisor;
+  const totalAmount = data.reduce((sum, d) => sum + d.amount, 0);
+  const totalCount = data.reduce((sum, d) => sum + d.count, 0);
+  const avgDaily = totalCount > 0 ? (totalAmount / totalCount).toFixed(2) : "0.00";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daily Totals - Last 7 Days</CardTitle>
+        <CardTitle>7-Day Transactions</CardTitle>
         <CardDescription>
-          Total: ₪{total.toFixed(2)} | Average: ₪{avgDaily.toFixed(2)}/day
-          {activeDaysAverage && activeDays > 0 && (
-            <span className="text-xs ml-1">({activeDays} active day{activeDays !== 1 ? "s" : ""})</span>
-          )}
+          Total: ₪{totalAmount.toFixed(2)} | {totalCount} transactions | Average: ₪{avgDaily}/transaction
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -98,25 +88,22 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
           <div className="h-64 flex items-center justify-center text-zinc-500">
             Loading chart...
           </div>
-        ) : data.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-zinc-500">
-            No transactions in the last 7 days
-          </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-              <XAxis dataKey="date" stroke="#71717a" style={{ fontSize: "12px" }} />
-              <YAxis stroke="#71717a" style={{ fontSize: "12px" }} />
-              <Tooltip
-                formatter={(value: any) => `₪${value.toFixed(2)}`}
-                contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #e4e4e7",
-                  borderRadius: "8px",
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+              <Tooltip 
+                formatter={(value: any, name: string) => {
+                  if (name === "amount") return `₪${value.toFixed(2)}`;
+                  return value;
                 }}
               />
-              <Bar dataKey="amount" fill="#10b981" name="Amount" />
+              <Legend />
+              <Bar yAxisId="left" dataKey="count" fill="#10b981" name="Transaction Count" />
+              <Bar yAxisId="right" dataKey="amount" fill="#3b82f6" name="Total Amount (₪)" />
             </BarChart>
           </ResponsiveContainer>
         )}

@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useRef, useMemo, useCallback, memo, useEffect } from "react";
-import { Search, RefreshCw } from "lucide-react";
+import { Search } from "lucide-react";
 import type { Member } from "@/lib/types";
 
 interface MemberSelectorProps {
   members: Member[];
   onSelect: (member: Member) => void;
-  onRefresh?: () => void;
 }
 
 // Memoized member button component for better performance
@@ -33,27 +32,10 @@ const MemberButton = memo(function MemberButton({
   );
 });
 
-export function MemberSelector({ members, onSelect, onRefresh }: MemberSelectorProps) {
+export function MemberSelector({ members, onSelect }: MemberSelectorProps) {
   const [search, setSearch] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const letterRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const handleRefresh = useCallback(async () => {
-    if (!onRefresh) return;
-    setIsRefreshing(true);
-    await onRefresh();
-    setIsRefreshing(false);
-  }, [onRefresh]);
-
-  // Auto-refresh every 30 minutes
-  useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      handleRefresh();
-    }, 30 * 60 * 1000); // 30 minutes
-
-    return () => clearInterval(refreshInterval);
-  }, [handleRefresh]);
 
   // Memoize filtered members to avoid recalculating on every render
   const filteredMembers = useMemo(() => {
@@ -86,18 +68,6 @@ export function MemberSelector({ members, onSelect, onRefresh }: MemberSelectorP
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Refresh Button - Top Right Corner */}
-      {onRefresh && (
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="absolute top-0 right-0 w-10 h-10 flex items-center justify-center rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition-colors disabled:opacity-50 btn-press z-20"
-          title="Refresh member list"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </button>
-      )}
-
       {/* Header */}
       <div className="text-center mb-4 flex-shrink-0">
         <h2 className="text-lg font-semibold text-stone-900">Select Your Name</h2>

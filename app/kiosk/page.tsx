@@ -431,7 +431,7 @@ export default function KioskPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-lg mx-auto px-3 py-3">
-          {step === "member" && <MemberSelector members={members} onSelect={handleMemberSelect} onRefresh={refetchMembers} />}
+          {step === "member" && <MemberSelector members={members} onSelect={handleMemberSelect} />}
           
           {step === "pin_confirmation" && selectedMember && (
             <PinConfirmationScreen 

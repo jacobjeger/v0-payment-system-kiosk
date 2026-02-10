@@ -61,19 +61,17 @@ export default function BusinessSettingsPage() {
           setDescription(data.description || "");
           setPresetAmounts(data.preset_amounts || []);
           setActiveDaysAverage(data.active_days_average || false);
+          
+          // Set email from business data
+          if (data.email) {
+            setAccountEmail(data.email);
+            // Create a minimal user object for password change form
+            setUser({
+              id: data.auth_user_id,
+              email: data.email,
+            } as any);
+          }
         }
-      }
-      
-      // Get auth user for password change
-      const supabaseUser = await supabase.auth.getUser();
-      const authUser = supabaseUser?.data?.user;
-      
-      if (authUser) {
-        console.log("[v0] Auth user found:", authUser.email);
-        setUser(authUser);
-        setAccountEmail(authUser.email || "");
-      } else {
-        console.log("[v0] No auth user found");
       }
       
       setLoading(false);

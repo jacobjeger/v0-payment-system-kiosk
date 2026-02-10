@@ -1,4 +1,5 @@
 import useSWR from "swr";
+import { useEffect, useRef } from "react";
 import type { Member, Business } from "@/lib/types";
 
 interface KioskData {
@@ -57,6 +58,36 @@ export function useKioskData(initialData?: KioskData) {
       errorRetryInterval: 5000,
     }
   );
+
+  // Schedule refresh at 6 AM every morning
+  const initRef = useRef(false);
+  useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+
+    const scheduleNextRefresh = () => {
+      const now = new Date();
+      const next6AM = new Date(now);
+      next6AM.setHours(6, 0, 0, 0);
+
+      // If 6 AM has already passed today, schedule for tomorrow
+      if (next6AM <= now) {
+        next6AM.setDate(next6AM.getDate() + 1);
+      }
+
+      const timeUntilRefresh = next6AM.getTime() - now.getTime();
+      
+      const timeout = setTimeout(() => {
+        console.log("[v0] 6 AM refresh triggered");
+        mutate();
+        scheduleNextRefresh();
+      }, timeUntilRefresh);
+
+      return () => clearTimeout(timeout);
+    };
+
+    return scheduleNextRefresh();
+  }, [mutate]);
 
   return {
     members: data?.members || [],

@@ -51,7 +51,7 @@ export function useKioskData(initialData?: KioskData) {
     {
       fallbackData: initialData,
       revalidateOnFocus: false,
-      revalidateOnReconnect: true,
+      revalidateOnReconnect: false, // Don't refresh when network comes back - only at 6 AM
       refreshInterval: 0, // Don't auto-refresh (prevents unnecessary reloads)
       dedupingInterval: 5000, // Dedupe requests within 5 seconds
       errorRetryCount: 3,

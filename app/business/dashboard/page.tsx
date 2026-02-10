@@ -58,6 +58,37 @@ export default function BusinessDashboard() {
 
   useEffect(() => { loadBusiness(); }, []);
 
+  useEffect(() => {
+    // Listen for business preference changes
+    if (!business?.id) return;
+    
+    const supabase = createClient();
+    const subscription = supabase
+      .channel(`business-${business.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "businesses",
+          filter: `id=eq.${business.id}`,
+        },
+        (payload) => {
+          const updatedBusiness = payload.new as Business;
+          setBusiness(updatedBusiness);
+          // Refresh the chart when preferences change
+          if (updatedBusiness.active_days_average !== business.active_days_average) {
+            console.log("[v0] Active days preference changed, chart will refresh");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [business?.id]);
+
   async function loadBusiness() {
     const supabase = createClient();
     // Check both sessionStorage and localStorage for business_id

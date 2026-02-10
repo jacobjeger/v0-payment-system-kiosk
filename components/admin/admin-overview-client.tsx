@@ -22,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Transaction7DayChart } from "./transaction-7day-chart";
 
 interface BillingCycle {
   id: string;
@@ -362,6 +363,9 @@ export function AdminOverviewClient({
           <span className="text-stone-400">{getFilterLabel()}: {loading ? "..." : cycleStats.count} transactions</span>
         </div>
       </div>
+
+      {/* 7-Day Transaction Chart */}
+      <Transaction7DayChart />
 
       {/* Recent Transactions */}
       <div>

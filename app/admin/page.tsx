@@ -1,6 +1,32 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { AdminOverviewClient } from "@/components/admin/admin-overview-client";
 
+// Helper function to fetch all transactions with pagination
+async function fetchAllCycleTransactions(supabase: any, cycleId: string) {
+  let allTransactions: any[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: batch } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("billing_cycle_id", cycleId)
+      .range(offset, offset + 999);
+
+    if (!batch || batch.length === 0) {
+      hasMore = false;
+    } else {
+      allTransactions = allTransactions.concat(batch);
+      offset += 1000;
+      if (batch.length < 1000) {
+        hasMore = false;
+      }
+    }
+  }
+  return { data: allTransactions };
+}
+
 // Revalidate data every 5 seconds for real-time updates
 export const revalidate = 5;
 
@@ -48,32 +74,7 @@ export default async function AdminPage() {
       .select("*")
       .order("created_at", { ascending: false }),
     // Current cycle total transactions - fetch with pagination for >1000 rows
-    activeCycle
-      ? (async () => {
-          let allTransactions: any[] = [];
-          let offset = 0;
-          let hasMore = true;
-          
-          while (hasMore) {
-            const { data: batch } = await supabase
-              .from("transactions")
-              .select("amount")
-              .eq("billing_cycle_id", activeCycle.id)
-              .range(offset, offset + 999);
-            
-            if (!batch || batch.length === 0) {
-              hasMore = false;
-            } else {
-              allTransactions = allTransactions.concat(batch);
-              offset += 1000;
-              if (batch.length < 1000) {
-                hasMore = false;
-              }
-            }
-          }
-          return { data: allTransactions };
-        })()
-      : Promise.resolve({ data: [] }),
+    activeCycle ? fetchAllCycleTransactions(supabase, activeCycle.id) : Promise.resolve({ data: [] }),
     supabase
       .from("transaction_reviews")
       .select("*", { count: "exact", head: true })

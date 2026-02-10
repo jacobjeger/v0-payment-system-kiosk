@@ -225,15 +225,14 @@ async function checkAuth() {
     const supabase = createClient();
     const cyclesToUse = cyclesList || cycles;
     
-    let query = supabase
+    let baseQuery = supabase
       .from("transactions")
       .select(`id, amount, description, created_at, business:businesses(name)`)
       .eq("member_id", memberId)
       .order("created_at", { ascending: false });
 
     if (filter === "cycle" && cycleId) {
-      // Filter by billing_cycle_id for accurate results
-      query = query.eq("billing_cycle_id", cycleId);
+      baseQuery = baseQuery.eq("billing_cycle_id", cycleId);
     } else if (filter !== "all") {
       const now = new Date();
       let startDate: Date;
@@ -255,15 +254,36 @@ async function checkAuth() {
           startDate = new Date(0);
       }
       
-      query = query.gte("created_at", startDate.toISOString());
+      baseQuery = baseQuery.gte("created_at", startDate.toISOString());
     }
 
-    const { data: txData } = await query.limit(50);
-    const txs = (txData || []) as unknown as Transaction[];
+    // Fetch all transactions with pagination for accurate stats, then limit display to 50
+    let allTransactions: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch } = await baseQuery.range(offset, offset + 999);
+      
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allTransactions = allTransactions.concat(batch);
+        offset += 1000;
+        if (batch.length < 1000) {
+          hasMore = false;
+        }
+      }
+    }
+
+    // Display only first 50 transactions
+    const displayTransactions = allTransactions.slice(0, 50);
+    const txs = displayTransactions as unknown as Transaction[];
     setTransactions(txs);
 
-    const total = txs.reduce((sum, tx) => sum + Number(tx.amount), 0);
-    setStats({ total, count: txs.length });
+    // Calculate stats from all transactions
+    const total = allTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+    setStats({ total, count: allTransactions.length });
   }
 
   function handleFilterChange(filter: FilterType, cycleId?: string) {

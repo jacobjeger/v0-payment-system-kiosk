@@ -47,12 +47,38 @@ export default function BusinessSettingsPage() {
     loadBusiness();
   }, []);
 
-  async function handleUpdatePassword(e: React.FormEvent) {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setProfileMessage({ type: "error", text: "Passwords do not match" });
-      return;
+  async function loadBusiness() {
+    try {
+      const supabase = createClient();
+      
+      // Get auth user FIRST
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setAccountEmail(session.user.email);
+        setUser(session.user);
+      } else {
+        setProfileMessage({ type: "error", text: "Auth session missing!" });
+      }
+      
+      // Then load business
+      const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
+      if (pinBusinessId) {
+        const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
+        if (data) { 
+          setBusiness(data);
+          setName(data.name);
+          setDescription(data.description || "");
+          setPresetAmounts(data.preset_amounts || []);
+          setActiveDaysAverage(data.active_days_average || false);
+        }
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.log("[v0] Error loading business:", error);
+      setLoading(false);
     }
+  }
     if (newPassword.length < 6) {
       setProfileMessage({ type: "error", text: "Password must be at least 6 characters" });
       return;

@@ -47,12 +47,32 @@ export default async function AdminPage() {
       .from("billing_cycles")
       .select("*")
       .order("created_at", { ascending: false }),
-    // Current cycle total transactions
+    // Current cycle total transactions - fetch with pagination for >1000 rows
     activeCycle
-      ? supabase
-          .from("transactions")
-          .select("amount")
-          .eq("billing_cycle_id", activeCycle.id)
+      ? (async () => {
+          let allTransactions: any[] = [];
+          let offset = 0;
+          let hasMore = true;
+          
+          while (hasMore) {
+            const { data: batch } = await supabase
+              .from("transactions")
+              .select("amount")
+              .eq("billing_cycle_id", activeCycle.id)
+              .range(offset, offset + 999);
+            
+            if (!batch || batch.length === 0) {
+              hasMore = false;
+            } else {
+              allTransactions = allTransactions.concat(batch);
+              offset += 1000;
+              if (batch.length < 1000) {
+                hasMore = false;
+              }
+            }
+          }
+          return { data: allTransactions };
+        })()
       : Promise.resolve({ data: [] }),
     supabase
       .from("transaction_reviews")

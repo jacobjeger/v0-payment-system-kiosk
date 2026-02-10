@@ -1,7 +1,6 @@
 "use client";
 
-import React from "react"
-
+import React from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -30,7 +29,6 @@ export default function BusinessSettingsPage() {
   const [newAmount, setNewAmount] = useState("");
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
   
-  
   // Profile state
   const [user, setUser] = useState<User | null>(null);
   const [accountEmail, setAccountEmail] = useState("");
@@ -39,88 +37,45 @@ export default function BusinessSettingsPage() {
   const [showPasswords, setShowPasswords] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: "", text: "" });
+  const initRef = React.useRef(false);
 
   useEffect(() => {
-    checkAuth();
+    if (initRef.current) return;
+    initRef.current = true;
+    loadBusiness();
   }, []);
 
-  async function checkAuth() {
-    const supabase = createClient();
-    const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
-    
-    // Always fetch the auth user
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) {
-      router.push("/business/login");
-      return;
-    }
-    setUser(authUser);
-    setAccountEmail(authUser.email || "");
-    
-    let bizId: string | null = null;
-    
-    if (pinBusinessId) {
-      // Verify the pinned business belongs to this auth user
-      const { data: verifyBiz } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("id", pinBusinessId)
-        .eq("auth_user_id", authUser.id)
-        .single();
+  async function loadBusiness() {
+    try {
+      const supabase = createClient();
       
-      if (verifyBiz) {
-        bizId = pinBusinessId;
+      // Get auth user FIRST
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setAccountEmail(session.user.email);
+        setUser(session.user);
       } else {
-        // Pinned business doesn't match auth user, clear it and find the correct one
-        sessionStorage.removeItem("business_id");
-        localStorage.removeItem("business_id");
-        
-        const { data } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("auth_user_id", authUser.id)
-          .single();
-        
-        if (data) {
-          bizId = data.id;
-          sessionStorage.setItem("business_id", bizId);
-        } else {
-          router.push("/business/login");
-          return;
+        setProfileMessage({ type: "error", text: "Auth session missing!" });
+      }
+      
+      // Then load business
+      const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
+      if (pinBusinessId) {
+        const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
+        if (data) { 
+          setBusiness(data);
+          setName(data.name);
+          setDescription(data.description || "");
+          setPresetAmounts(data.preset_amounts || []);
+          setActiveDaysAverage(data.active_days_average || false);
         }
       }
-    } else {
-      const { data } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("auth_user_id", authUser.id)
-        .single();
       
-      if (data) {
-        bizId = data.id;
-        sessionStorage.setItem("business_id", bizId);
-      } else {
-        router.push("/business/login");
-        return;
-      }
+      setLoading(false);
+    } catch (error) {
+      console.log("[v0] Error loading business:", error);
+      setLoading(false);
     }
-
-    // Load business details
-    const { data: biz } = await supabase
-      .from("businesses")
-      .select("*")
-      .eq("id", bizId)
-      .single();
-
-    if (biz) {
-      setBusiness(biz);
-      setName(biz.name);
-      setDescription(biz.description || "");
-      setPresetAmounts(biz.preset_amounts || []);
-      setActiveDaysAverage(biz.active_days_average || false);
-    }
-    
-    setLoading(false);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -146,7 +101,6 @@ export default function BusinessSettingsPage() {
       setMessage("Error saving settings: " + error.message);
     } else {
       setMessage("Settings saved successfully!");
-      // Update session storage if name changed
       if (sessionStorage.getItem("business_name")) {
         sessionStorage.setItem("business_name", name);
       }
@@ -278,7 +232,6 @@ export default function BusinessSettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Current amounts */}
                 {presetAmounts.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {presetAmounts.map((amount) => (
@@ -301,7 +254,6 @@ export default function BusinessSettingsPage() {
                   <p className="text-sm text-muted-foreground">Using system defaults: ₪5, ₪10, ₪15, ₪20, ₪25, ₪50</p>
                 )}
                 
-                {/* Add new amount */}
                 <div className="flex gap-2">
                   <Input
                     type="number"

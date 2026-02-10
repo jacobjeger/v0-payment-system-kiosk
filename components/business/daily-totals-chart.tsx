@@ -34,12 +34,37 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    const { data: transactions } = await supabase
-      .from("transactions")
-      .select("amount, created_at")
-      .eq("business_id", businessId)
-      .gte("created_at", startDate.toISOString())
-      .lte("created_at", endDate.toISOString());
+    // Fetch with pagination to handle >1000 transactions
+    let allTransactions: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: transactions, error } = await supabase
+        .from("transactions")
+        .select("amount, created_at")
+        .eq("business_id", businessId)
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString())
+        .range(offset, offset + 999);
+
+      if (error) {
+        console.log("[v0] Chart error:", error);
+        break;
+      }
+
+      if (!transactions || transactions.length === 0) {
+        hasMore = false;
+      } else {
+        allTransactions = allTransactions.concat(transactions);
+        offset += 1000;
+        if (transactions.length < 1000) {
+          hasMore = false;
+        }
+      }
+    }
+
+    console.log("[v0] Chart data loaded:", { count: allTransactions.length, activeDaysAverage });
 
     // Group by date
     const dailyMap = new Map<string, { amount: number; count: number }>();
@@ -56,7 +81,7 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
     }
 
     // Sum transactions by date
-    transactions?.forEach((t) => {
+    allTransactions.forEach((t) => {
       const date = new Date(t.created_at).toLocaleDateString("en-IL", {
         month: "short",
         day: "numeric",
@@ -73,6 +98,7 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
       count,
     }));
 
+    console.log("[v0] Chart data processed:", chartData);
     setData(chartData);
     setLoading(false);
   }

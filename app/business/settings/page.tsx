@@ -65,11 +65,14 @@ export default function BusinessSettingsPage() {
       }
       
       // Get auth user for password change - always try to fetch
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-      console.log("[v0] Auth user fetch result:", { user: authUser?.email, error: userError });
-      if (authUser) {
-        setUser(authUser);
-        setAccountEmail(authUser.email || "");
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          setUser(authUser);
+          setAccountEmail(authUser.email || "");
+        }
+      } catch (authErr) {
+        console.log("[v0] Could not fetch auth user:", authErr);
       }
       
       setLoading(false);

@@ -34,12 +34,19 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    const { data: transactions } = await supabase
+    let query = supabase
       .from("transactions")
-      .select("amount, created_at")
+      .select("amount, created_at, is_active_day")
       .eq("business_id", businessId)
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
+    
+    // Filter by active days if enabled
+    if (activeDaysAverage) {
+      query = query.eq("is_active_day", true);
+    }
+
+    const { data: transactions } = await query;
 
     // Group by date
     const dailyMap = new Map<string, { amount: number; count: number }>();

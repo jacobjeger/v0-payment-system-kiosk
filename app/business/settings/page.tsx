@@ -47,6 +47,45 @@ export default function BusinessSettingsPage() {
     loadBusiness();
   }, []);
 
+  async function handleUpdatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setProfileMessage({ type: "error", text: "Passwords do not match" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setProfileMessage({ type: "error", text: "Password must be at least 6 characters" });
+      return;
+    }
+
+    setSavingProfile(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      setProfileMessage({ type: "error", text: error.message });
+    } else {
+      setProfileMessage({ type: "success", text: "Password updated successfully" });
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setSavingProfile(false);
+  }
+
+  async function handleUpdateEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProfile(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ email: accountEmail });
+
+    if (error) {
+      setProfileMessage({ type: "error", text: error.message });
+    } else {
+      setProfileMessage({ type: "success", text: "Email updated successfully" });
+    }
+    setSavingProfile(false);
+  }
+
   async function loadBusiness() {
     try {
       const supabase = createClient();
@@ -61,18 +100,17 @@ export default function BusinessSettingsPage() {
           setDescription(data.description || "");
           setPresetAmounts(data.preset_amounts || []);
           setActiveDaysAverage(data.active_days_average || false);
-          
-          // Set email from business data
-          if (data.email) {
-            setAccountEmail(data.email);
-            // Create a minimal user object for password change form
-            setUser({
-              id: data.auth_user_id,
-              email: data.email,
-            } as any);
-          }
         }
       }
+      
+      // Get auth user email for the account settings form
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser?.email) {
+        setAccountEmail(authUser.email);
+      }
+      
+      // Always set user to trigger password section
+      setUser({ id: "business" } as any);
       
       setLoading(false);
     } catch (error) {

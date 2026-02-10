@@ -48,18 +48,20 @@ export default function BusinessSettingsPage() {
     const supabase = createClient();
     const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
     
+    // Always fetch the auth user
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      router.push("/business/login");
+      return;
+    }
+    setUser(authUser);
+    setAccountEmail(authUser.email || "");
+    
     let bizId: string | null = null;
     
     if (pinBusinessId) {
       bizId = pinBusinessId;
     } else {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        router.push("/business/login");
-        return;
-      }
-      setUser(authUser);
-      setAccountEmail(authUser.email || "");
       const { data } = await supabase
         .from("businesses")
         .select("id")

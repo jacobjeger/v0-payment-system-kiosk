@@ -61,12 +61,12 @@ export default function BusinessSettingsPage() {
     
     if (pinBusinessId) {
       // Verify the pinned business belongs to this auth user
-      const { data: verifyBiz } = await supabase
+      const { data: verifyBiz, error: verifyError } = await supabase
         .from("businesses")
         .select("id")
         .eq("id", pinBusinessId)
         .eq("auth_user_id", authUser.id)
-        .single();
+        .maybeSingle();
       
       if (verifyBiz) {
         bizId = pinBusinessId;
@@ -75,11 +75,11 @@ export default function BusinessSettingsPage() {
         sessionStorage.removeItem("business_id");
         localStorage.removeItem("business_id");
         
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("businesses")
           .select("id")
           .eq("auth_user_id", authUser.id)
-          .single();
+          .maybeSingle();
         
         if (data) {
           bizId = data.id;
@@ -90,11 +90,11 @@ export default function BusinessSettingsPage() {
         }
       }
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("businesses")
         .select("id")
         .eq("auth_user_id", authUser.id)
-        .single();
+        .maybeSingle();
       
       if (data) {
         bizId = data.id;
@@ -106,11 +106,11 @@ export default function BusinessSettingsPage() {
     }
 
     // Load business details
-    const { data: biz } = await supabase
+    const { data: biz, error: bizError } = await supabase
       .from("businesses")
       .select("*")
       .eq("id", bizId)
-      .single();
+      .maybeSingle();
 
     if (biz) {
       setBusiness(biz);

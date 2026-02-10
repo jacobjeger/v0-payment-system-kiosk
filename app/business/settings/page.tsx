@@ -44,98 +44,33 @@ export default function BusinessSettingsPage() {
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
-    checkAuth();
+    loadBusiness();
   }, []);
 
-  async function checkAuth() {
-    try {
-      const supabase = createClient();
-      const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
-      
-      // Always fetch the auth user
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        console.log("[v0] No auth user found, redirecting to login");
-        router.push("/business/login");
-        return;
+  async function loadBusiness() {
+    const supabase = createClient();
+    // Check both sessionStorage and localStorage for business_id
+    const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
+    
+    if (pinBusinessId) {
+      const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
+      if (data) { 
+        setBusiness(data);
+        setName(data.name);
+        setDescription(data.description || "");
+        setPresetAmounts(data.preset_amounts || []);
+        setActiveDaysAverage(data.active_days_average || false);
       }
+    }
+    
+    // Get auth user for password change
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
       setUser(authUser);
       setAccountEmail(authUser.email || "");
-      
-      let bizId: string | null = null;
-      
-      if (pinBusinessId) {
-        // Verify the pinned business belongs to this auth user
-        const { data: verifyBiz, error: verifyError } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("id", pinBusinessId)
-          .eq("auth_user_id", authUser.id)
-          .maybeSingle();
-        
-        if (verifyBiz) {
-          bizId = pinBusinessId;
-        } else {
-          // Pinned business doesn't match auth user, clear it and find the correct one
-          console.log("[v0] Pinned business mismatch, finding correct business");
-          sessionStorage.removeItem("business_id");
-          localStorage.removeItem("business_id");
-          
-          const { data, error } = await supabase
-            .from("businesses")
-            .select("id")
-            .eq("auth_user_id", authUser.id)
-            .maybeSingle();
-          
-          if (data) {
-            bizId = data.id;
-            sessionStorage.setItem("business_id", bizId);
-          } else {
-            console.log("[v0] No business found for auth user");
-            router.push("/business/login");
-            return;
-          }
-        }
-      } else {
-        const { data, error } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("auth_user_id", authUser.id)
-          .maybeSingle();
-        
-        if (data) {
-          bizId = data.id;
-          sessionStorage.setItem("business_id", bizId);
-        } else {
-          console.log("[v0] No business found, redirecting to login");
-          router.push("/business/login");
-          return;
-        }
-      }
-
-      // Load business details
-      const { data: biz, error: bizError } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("id", bizId)
-        .maybeSingle();
-
-      if (biz) {
-        setBusiness(biz);
-        setName(biz.name);
-        setDescription(biz.description || "");
-        setPresetAmounts(biz.preset_amounts || []);
-        setActiveDaysAverage(biz.active_days_average || false);
-        console.log("[v0] Business loaded successfully");
-      } else {
-        console.log("[v0] Could not load business details");
-      }
-      
-      setLoading(false);
-    } catch (error) {
-      console.log("[v0] Auth check error:", error);
-      setLoading(false);
     }
+    
+    setLoading(false);
   }
 
   async function handleSave(e: React.FormEvent) {

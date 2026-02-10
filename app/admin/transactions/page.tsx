@@ -16,21 +16,38 @@ export default async function TransactionsPage() {
   // Find the active cycle
   const activeCycle = billingCycles?.find(c => c.status === "active");
 
-  // Get all transactions (we'll filter client-side for better UX)
-  const { data: transactions } = await supabase
-    .from("transactions")
-    .select(`
-      id,
-      amount,
-      balance_before,
-      balance_after,
-      description,
-      created_at,
-      billing_cycle_id,
-      members ( id, first_name, last_name, member_code ),
-      businesses ( id, name )
-    `)
-    .order("created_at", { ascending: false });
+  // Get all transactions with pagination to handle >1000 rows
+  let allTransactions: any[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: batch } = await supabase
+      .from("transactions")
+      .select(`
+        id,
+        amount,
+        balance_before,
+        balance_after,
+        description,
+        created_at,
+        billing_cycle_id,
+        members ( id, first_name, last_name, member_code ),
+        businesses ( id, name )
+      `)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + 999);
+
+    if (!batch || batch.length === 0) {
+      hasMore = false;
+    } else {
+      allTransactions = allTransactions.concat(batch);
+      offset += 1000;
+      if (batch.length < 1000) {
+        hasMore = false;
+      }
+    }
+  }
 
   const { data: businesses } = await supabase
     .from("businesses")
@@ -54,7 +71,7 @@ export default async function TransactionsPage() {
       </div>
 
       <TransactionList
-        transactions={transactions || []}
+        transactions={allTransactions || []}
         businesses={businesses || []}
         billingCycles={billingCycles || []}
         activeCycleId={activeCycle?.id || null}

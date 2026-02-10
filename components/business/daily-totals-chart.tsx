@@ -46,7 +46,8 @@ export function DailyTotalsChart({ businessId, activeDaysAverage = false }: Dail
       query = query.eq("is_active_day", true);
     }
 
-    const { data: transactions } = await query;
+    const { data: transactions, error } = await query;
+    console.log("[v0] Chart data loaded:", { count: transactions?.length, activeDaysAverage, error });
 
     // Group by date
     const dailyMap = new Map<string, { amount: number; count: number }>();

@@ -60,7 +60,35 @@ export default function BusinessSettingsPage() {
     let bizId: string | null = null;
     
     if (pinBusinessId) {
-      bizId = pinBusinessId;
+      // Verify the pinned business belongs to this auth user
+      const { data: verifyBiz } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("id", pinBusinessId)
+        .eq("auth_user_id", authUser.id)
+        .single();
+      
+      if (verifyBiz) {
+        bizId = pinBusinessId;
+      } else {
+        // Pinned business doesn't match auth user, clear it and find the correct one
+        sessionStorage.removeItem("business_id");
+        localStorage.removeItem("business_id");
+        
+        const { data } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("auth_user_id", authUser.id)
+          .single();
+        
+        if (data) {
+          bizId = data.id;
+          sessionStorage.setItem("business_id", bizId);
+        } else {
+          router.push("/business/login");
+          return;
+        }
+      }
     } else {
       const { data } = await supabase
         .from("businesses")
@@ -70,6 +98,7 @@ export default function BusinessSettingsPage() {
       
       if (data) {
         bizId = data.id;
+        sessionStorage.setItem("business_id", bizId);
       } else {
         router.push("/business/login");
         return;

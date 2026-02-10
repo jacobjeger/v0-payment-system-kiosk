@@ -48,29 +48,35 @@ export default function BusinessSettingsPage() {
   }, []);
 
   async function loadBusiness() {
-    const supabase = createClient();
-    // Check both sessionStorage and localStorage for business_id
-    const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
-    
-    if (pinBusinessId) {
-      const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
-      if (data) { 
-        setBusiness(data);
-        setName(data.name);
-        setDescription(data.description || "");
-        setPresetAmounts(data.preset_amounts || []);
-        setActiveDaysAverage(data.active_days_average || false);
+    try {
+      const supabase = createClient();
+      // Check both sessionStorage and localStorage for business_id
+      const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
+      
+      if (pinBusinessId) {
+        const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
+        if (data) { 
+          setBusiness(data);
+          setName(data.name);
+          setDescription(data.description || "");
+          setPresetAmounts(data.preset_amounts || []);
+          setActiveDaysAverage(data.active_days_average || false);
+        }
       }
+      
+      // Get auth user for password change - always try to fetch
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      console.log("[v0] Auth user fetch result:", { user: authUser?.email, error: userError });
+      if (authUser) {
+        setUser(authUser);
+        setAccountEmail(authUser.email || "");
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.log("[v0] Error loading business:", error);
+      setLoading(false);
     }
-    
-    // Get auth user for password change
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (authUser) {
-      setUser(authUser);
-      setAccountEmail(authUser.email || "");
-    }
-    
-    setLoading(false);
   }
 
   async function handleSave(e: React.FormEvent) {

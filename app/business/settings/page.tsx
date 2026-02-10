@@ -1,7 +1,6 @@
 "use client";
 
-import React from "react"
-
+import React from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -29,7 +28,6 @@ export default function BusinessSettingsPage() {
   const [presetAmounts, setPresetAmounts] = useState<number[]>([]);
   const [newAmount, setNewAmount] = useState("");
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
-  
   
   // Profile state
   const [user, setUser] = useState<User | null>(null);
@@ -79,71 +77,6 @@ export default function BusinessSettingsPage() {
       setLoading(false);
     }
   }
-    if (newPassword.length < 6) {
-      setProfileMessage({ type: "error", text: "Password must be at least 6 characters" });
-      return;
-    }
-
-    setSavingProfile(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-
-    if (error) {
-      setProfileMessage({ type: "error", text: error.message });
-    } else {
-      setProfileMessage({ type: "success", text: "Password updated successfully" });
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    setSavingProfile(false);
-  }
-
-  async function handleUpdateEmail(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingProfile(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ email: accountEmail });
-
-    if (error) {
-      setProfileMessage({ type: "error", text: error.message });
-    } else {
-      setProfileMessage({ type: "success", text: "Email updated successfully" });
-    }
-    setSavingProfile(false);
-  }
-
-  async function loadBusiness() {
-    try {
-      const supabase = createClient();
-      // Check both sessionStorage and localStorage for business_id
-      const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
-      
-      if (pinBusinessId) {
-        const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
-        if (data) { 
-          setBusiness(data);
-          setName(data.name);
-          setDescription(data.description || "");
-          setPresetAmounts(data.preset_amounts || []);
-          setActiveDaysAverage(data.active_days_average || false);
-        }
-      }
-      
-      // Get auth user email for the account settings form
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser?.email) {
-        setAccountEmail(authUser.email);
-      }
-      
-      // Always set user to trigger password section
-      setUser({ id: "business" } as any);
-      
-      setLoading(false);
-    } catch (error) {
-      console.log("[v0] Error loading business:", error);
-      setLoading(false);
-    }
-  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -168,7 +101,6 @@ export default function BusinessSettingsPage() {
       setMessage("Error saving settings: " + error.message);
     } else {
       setMessage("Settings saved successfully!");
-      // Update session storage if name changed
       if (sessionStorage.getItem("business_name")) {
         sessionStorage.setItem("business_name", name);
       }
@@ -300,7 +232,6 @@ export default function BusinessSettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Current amounts */}
                 {presetAmounts.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {presetAmounts.map((amount) => (
@@ -323,7 +254,6 @@ export default function BusinessSettingsPage() {
                   <p className="text-sm text-muted-foreground">Using system defaults: ₪5, ₪10, ₪15, ₪20, ₪25, ₪50</p>
                 )}
                 
-                {/* Add new amount */}
                 <div className="flex gap-2">
                   <Input
                     type="number"

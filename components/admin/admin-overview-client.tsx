@@ -95,11 +95,11 @@ export function AdminOverviewClient({
     setLoading(true);
     const supabase = createClient();
     
-    let query = supabase.from("transactions").select("amount, created_at, billing_cycle_id");
+    let baseQuery = supabase.from("transactions").select("amount, created_at, billing_cycle_id");
     
     if (filter === "cycle" && cycleId) {
       // Use billing_cycle_id for accurate filtering
-      query = query.eq("billing_cycle_id", cycleId);
+      baseQuery = baseQuery.eq("billing_cycle_id", cycleId);
     } else if (filter !== "all") {
       const now = new Date();
       let startDate: Date;
@@ -121,25 +121,42 @@ export function AdminOverviewClient({
           startDate = new Date(0);
       }
       
-      query = query.gte("created_at", startDate.toISOString());
+      baseQuery = baseQuery.gte("created_at", startDate.toISOString());
     }
     
-    const { data: transactions, error } = await query;
-    
-    if (error) {
-      console.error("Error loading stats:", error);
-      setCycleStats({ total: 0, count: 0 });
-      setTodayFilteredStats({ total: 0, count: 0 });
-      setLoading(false);
-      return;
+    // Fetch all transactions with pagination for >1000 rows
+    let allTransactions: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch, error } = await baseQuery.range(offset, offset + 999);
+      
+      if (error) {
+        console.error("Error loading stats:", error);
+        setCycleStats({ total: 0, count: 0 });
+        setTodayFilteredStats({ total: 0, count: 0 });
+        setLoading(false);
+        return;
+      }
+
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allTransactions = allTransactions.concat(batch);
+        offset += 1000;
+        if (batch.length < 1000) {
+          hasMore = false;
+        }
+      }
     }
     
-    const total = transactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-    setCycleStats({ total, count: transactions?.length || 0 });
+    const total = allTransactions.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+    setCycleStats({ total, count: allTransactions.length });
     
     // Calculate today's stats within the filtered results
     const todayStart = new Date().toISOString().split("T")[0] + "T00:00:00.000Z";
-    const todayTransactions = transactions?.filter(t => t.created_at >= todayStart) || [];
+    const todayTransactions = allTransactions.filter(t => t.created_at >= todayStart) || [];
     const todayTotal = todayTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
     setTodayFilteredStats({ total: todayTotal, count: todayTransactions.length });
     

@@ -143,13 +143,11 @@ export default function BusinessDashboard() {
   async function loadStats(businessId: string, feePercentage: number, filter: FilterType, cycleId: string | null) {
     const supabase = createClient();
     
-    let query = supabase.from("transactions").select("amount, created_at").eq("business_id", businessId);
+    let baseQuery = supabase.from("transactions").select("amount, created_at").eq("business_id", businessId);
     
     if (filter === "cycle" && cycleId) {
-      // Filter by billing_cycle_id for accurate results
-      query = query.eq("billing_cycle_id", cycleId);
+      baseQuery = baseQuery.eq("billing_cycle_id", cycleId);
     } else if (filter !== "all") {
-      // Filter by time period
       const now = new Date();
       let startDate: Date;
       
@@ -170,18 +168,35 @@ export default function BusinessDashboard() {
           startDate = new Date(0);
       }
       
-      query = query.gte("created_at", startDate.toISOString());
+      baseQuery = baseQuery.gte("created_at", startDate.toISOString());
     }
     
-    const { data: transactions } = await query;
+    // Fetch all transactions with pagination for >1000 rows
+    let allTransactions: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch } = await baseQuery.range(offset, offset + 999);
+      
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allTransactions = allTransactions.concat(batch);
+        offset += 1000;
+        if (batch.length < 1000) {
+          hasMore = false;
+        }
+      }
+    }
     
-    const revenue = transactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+    const revenue = allTransactions.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
     const feeAmount = revenue * (feePercentage / 100);
     const netRevenue = revenue - feeAmount;
 
     setStats({
       revenue,
-      transactionCount: transactions?.length || 0,
+      transactionCount: allTransactions.length,
       feePercentage,
       feeAmount,
       netRevenue,

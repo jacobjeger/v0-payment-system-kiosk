@@ -8,12 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, Lock, Mail, Eye, EyeOff, Plus, X, DollarSign, BarChart3 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { createClient } from "@/lib/supabase/client";
+import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X, Lock, Mail } from "lucide-react";
 import type { Business } from "@/lib/types";
-import type { User } from "@supabase/supabase-js";
 
 export default function BusinessSettingsPage() {
   const router = useRouter();
@@ -28,15 +26,14 @@ export default function BusinessSettingsPage() {
   const [presetAmounts, setPresetAmounts] = useState<number[]>([]);
   const [newAmount, setNewAmount] = useState("");
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
+  const [notificationEmail, setNotificationEmail] = useState("");
   
-  // Profile state
-  const [user, setUser] = useState<User | null>(null);
-  const [accountEmail, setAccountEmail] = useState("");
+  // Password state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPasswords, setShowPasswords] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMessage, setProfileMessage] = useState({ type: "", text: "" });
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  
   const initRef = React.useRef(false);
 
   useEffect(() => {
@@ -49,16 +46,7 @@ export default function BusinessSettingsPage() {
     try {
       const supabase = createClient();
       
-      // Get auth user FIRST
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        setAccountEmail(session.user.email);
-        setUser(session.user);
-      } else {
-        setProfileMessage({ type: "error", text: "Auth session missing!" });
-      }
-      
-      // Then load business
+      // Load business only - no auth user needed for business portal
       const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
       if (pinBusinessId) {
         const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
@@ -68,6 +56,7 @@ export default function BusinessSettingsPage() {
           setDescription(data.description || "");
           setPresetAmounts(data.preset_amounts || []);
           setActiveDaysAverage(data.active_days_average || false);
+          setNotificationEmail(data.email || "");
         }
       }
       
@@ -85,6 +74,15 @@ export default function BusinessSettingsPage() {
     setSaving(true);
     setMessage("");
 
+    console.log("[v0] Saving business settings:", { 
+      businessId: business.id, 
+      name, 
+      description, 
+      presetAmounts, 
+      activeDaysAverage,
+      notificationEmail 
+    });
+
     const supabase = createClient();
     const { error } = await supabase
       .from("businesses")
@@ -93,9 +91,12 @@ export default function BusinessSettingsPage() {
         description: description || null,
         preset_amounts: presetAmounts.length > 0 ? presetAmounts : null,
         active_days_average: activeDaysAverage,
+        email: notificationEmail || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", business.id);
+
+    console.log("[v0] Save response:", { error });
 
     if (error) {
       setMessage("Error saving settings: " + error.message);
@@ -109,6 +110,63 @@ export default function BusinessSettingsPage() {
     setSaving(false);
   }
 
+  async function handleUpdatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    console.log("[v0] handleUpdatePassword called!");
+    if (!business) {
+      console.log("[v0] No business, returning");
+      return;
+    }
+    
+    if (!newPassword || !confirmPassword) {
+      setPasswordMessage("Please fill in both fields");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Passwords do not match");
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setPasswordMessage("Password must be at least 6 characters");
+      return;
+    }
+    
+    setSavingPassword(true);
+    setPasswordMessage("");
+    
+    try {
+      console.log("[v0] Updating password for business:", business.id);
+      // Call server action to hash and update password
+      const response = await fetch("/api/business/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          businessId: business.id,
+          password: newPassword 
+        }),
+      });
+      
+      console.log("[v0] API response status:", response.status);
+      const result = await response.json();
+      console.log("[v0] Password update response:", result);
+      
+      if (!result.success) {
+        setPasswordMessage("Error updating password: " + (result.error || "Unknown error"));
+      } else {
+        setPasswordMessage("Password updated successfully!");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } catch (error) {
+      console.log("[v0] Password update error:", error);
+      setPasswordMessage("Error updating password: " + (error as Error).message);
+    }
+    
+    setSavingPassword(false);
+  }
+
   function addPresetAmount() {
     const amount = parseFloat(newAmount);
     if (isNaN(amount) || amount <= 0) return;
@@ -119,51 +177,6 @@ export default function BusinessSettingsPage() {
 
   function removePresetAmount(amount: number) {
     setPresetAmounts(presetAmounts.filter(a => a !== amount));
-  }
-
-  async function handleUpdateEmail(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingProfile(true);
-    setProfileMessage({ type: "", text: "" });
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ email: accountEmail });
-
-    if (error) {
-      setProfileMessage({ type: "error", text: error.message });
-    } else {
-      setProfileMessage({ type: "success", text: "Email updated! Check your inbox to confirm." });
-    }
-    setSavingProfile(false);
-  }
-
-  async function handleUpdatePassword(e: React.FormEvent) {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      setProfileMessage({ type: "error", text: "Passwords do not match" });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setProfileMessage({ type: "error", text: "Password must be at least 6 characters" });
-      return;
-    }
-
-    setSavingProfile(true);
-    setProfileMessage({ type: "", text: "" });
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-
-    if (error) {
-      setProfileMessage({ type: "error", text: error.message });
-    } else {
-      setProfileMessage({ type: "success", text: "Password updated successfully!" });
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    setSavingProfile(false);
   }
 
   if (loading) {
@@ -306,6 +319,31 @@ export default function BusinessSettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Notification Email */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Notification Email
+              </CardTitle>
+              <CardDescription>
+                Email address for receiving transaction alerts and reports (optional)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="notification-email">Email Address</Label>
+                <Input
+                  id="notification-email"
+                  type="email"
+                  value={notificationEmail}
+                  onChange={(e) => setNotificationEmail(e.target.value)}
+                  placeholder="your@email.com"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {message && (
             <div className={`p-3 rounded-lg text-sm ${
               message.includes("Error") 
@@ -318,101 +356,62 @@ export default function BusinessSettingsPage() {
 
           <Button type="submit" disabled={saving} className="w-full">
             <Save className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save Settings"}
+            {saving ? "Saving..." : "Save Business Settings"}
           </Button>
         </form>
 
-        {/* Account Profile Section */}
-        {user && (
-          <div className="mt-8 pt-8 border-t">
-            <h2 className="text-xl font-bold mb-6">Account Settings</h2>
-            
-            {profileMessage.text && (
-              <div className={`mb-6 p-4 rounded-lg ${
-                profileMessage.type === "error" 
-                  ? "bg-destructive/10 text-destructive" 
-                  : "bg-green-100 text-green-700"
-              }`}>
-                {profileMessage.text}
+        {/* Password Settings Form - Separate from Business Settings Form */}
+        <form onSubmit={handleUpdatePassword} className="mt-8 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="w-5 h-5" />
+                Change Password
+              </CardTitle>
+              <CardDescription>
+                Update your business login password
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    required
+                  />
+                </div>
+                {passwordMessage && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    passwordMessage.includes("Error") || passwordMessage.includes("do not match") || passwordMessage.includes("at least")
+                      ? "bg-destructive/10 text-destructive" 
+                      : "bg-green-100 text-green-700"
+                  }`}>
+                    {passwordMessage}
+                  </div>
+                )}
+                <Button type="submit" disabled={savingPassword} className="w-full">
+                  {savingPassword ? "Updating..." : "Update Password"}
+                </Button>
               </div>
-            )}
-
-            {/* Email Section */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Mail className="w-4 h-4" />
-                  Email Address
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleUpdateEmail} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="accountEmail">Email</Label>
-                    <Input
-                      id="accountEmail"
-                      type="email"
-                      value={accountEmail}
-                      onChange={(e) => setAccountEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" size="sm" disabled={savingProfile}>
-                    Update Email
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Password Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Lock className="w-4 h-4" />
-                  Change Password
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleUpdatePassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="newPassword"
-                        type={showPasswords ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                        onClick={() => setShowPasswords(!showPasswords)}
-                      >
-                        {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type={showPasswords ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                  <Button type="submit" size="sm" disabled={savingProfile}>
-                    Update Password
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </form>
       </main>
     </div>
   );

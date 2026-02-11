@@ -99,21 +99,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (adminData?.mfa_enabled) {
         // Generate device fingerprint
         const deviceFingerprint = generateDeviceFingerprint();
+        console.log("[v0] Admin layout - checking device trust for:", adminData.id, "fingerprint:", deviceFingerprint);
         
         // Check if this device is trusted by querying the database directly
         const { data: trustedDevice, error: deviceError } = await supabase
           .from("trusted_devices")
-          .select("id, device_fingerprint")
+          .select("id, device_fingerprint, expires_at")
           .eq("admin_user_id", adminData.id)
           .eq("device_fingerprint", deviceFingerprint)
           .maybeSingle();
         
-        // If device is not trusted, require MFA verification
-        if (!trustedDevice) {
+        console.log("[v0] Admin layout - trusted device query result:", { trustedDevice, deviceError });
+        
+        // If device is not trusted or expired, require MFA verification
+        let deviceTrusted = false;
+        if (trustedDevice) {
+          // Check if device has expired
+          if (trustedDevice.expires_at) {
+            const expiresAt = new Date(trustedDevice.expires_at);
+            const now = new Date();
+            deviceTrusted = expiresAt > now;
+            console.log("[v0] Admin layout - device expired check:", { expiresAt, now, deviceTrusted });
+          } else {
+            deviceTrusted = true;
+          }
+        }
+        
+        if (!deviceTrusted) {
           // Redirect to MFA verification page outside admin layout
+          console.log("[v0] Admin layout - device not trusted, redirecting to MFA");
           router.push(`/auth/mfa-verify?admin_id=${adminData.id}&email=${encodeURIComponent(user.email!)}&device=${encodeURIComponent(deviceFingerprint)}`);
           return;
         }
+        console.log("[v0] Admin layout - device is trusted, allowing access");
       }
       
       setUser(user);

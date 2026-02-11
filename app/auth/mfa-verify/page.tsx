@@ -50,6 +50,7 @@ export default function AdminMFAVerifyPage() {
 
     if (!adminId) return;
 
+    console.log("[v0] MFA verify - verifying code for admin:", adminId);
     const response = await fetch("/api/admin/mfa/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -57,10 +58,12 @@ export default function AdminMFAVerifyPage() {
     });
 
     const result = await response.json();
+    console.log("[v0] MFA verify - result:", result);
 
     if (result.success) {
       // If "Remember Me" is checked, trust this device
       if (rememberDevice && deviceFingerprint) {
+        console.log("[v0] MFA verify - trusting device with fingerprint:", deviceFingerprint);
         const deviceName = getDeviceName();
         try {
           const trustResponse = await fetch("/api/admin/mfa/trust-device", {
@@ -74,13 +77,18 @@ export default function AdminMFAVerifyPage() {
             }),
           });
           const trustResult = await trustResponse.json();
+          console.log("[v0] MFA verify - trust result:", trustResult);
           
           if (!trustResult.success) {
-            console.error("[v0] Failed to trust device:", trustResult.error);
+            console.error("[v0] MFA verify - Failed to trust device:", trustResult.error);
+          } else {
+            console.log("[v0] MFA verify - Device trusted successfully");
           }
         } catch (err) {
-          console.error("[v0] Error trusting device:", err);
+          console.error("[v0] MFA verify - Error trusting device:", err);
         }
+      } else {
+        console.log("[v0] MFA verify - Not remembering device (rememberDevice:", rememberDevice, "deviceFingerprint:", deviceFingerprint, ")");
       }
       
       // Force full page reload to admin portal to ensure layout re-checks authentication

@@ -185,21 +185,17 @@ export async function closeBillingCycle(cycleId: string) {
     return { success: true, invoiceCount: 0 };
   }
 
-  // Get all businesses with their owners for offset calculation
-  const { data: businessesWithOwners } = await supabase
-    .from("businesses")
-    .select("id, owner_member_id")
-    .not("owner_member_id", "is", null);
+  // Get all APPROVED offsets for this cycle
+  const { data: approvedOffsets } = await supabase
+    .from("owner_offsets")
+    .select("*")
+    .eq("billing_cycle_id", cycleId)
+    .eq("status", "approved");
 
-  const ownerBusinessMap = new Map<string, string[]>();
-  if (businessesWithOwners) {
-    businessesWithOwners.forEach(b => {
-      if (b.owner_member_id) {
-        if (!ownerBusinessMap.has(b.owner_member_id)) {
-          ownerBusinessMap.set(b.owner_member_id, []);
-        }
-        ownerBusinessMap.get(b.owner_member_id)!.push(b.id);
-      }
+  const offsetMap = new Map<string, number>();
+  if (approvedOffsets) {
+    approvedOffsets.forEach(offset => {
+      offsetMap.set(offset.member_id, offset.offset_amount);
     });
   }
 
@@ -213,38 +209,28 @@ export async function closeBillingCycle(cycleId: string) {
     memberTotals[tx.member_id].count += 1;
   }
 
-  // Create invoices for each member and apply owner offsets
+  // Create invoices for each member with approved offsets applied
   const invoices = [];
   const offsetTransactions = [];
 
   for (const [memberId, data] of Object.entries(memberTotals)) {
     let invoiceAmount = data.total;
     
-    // Check if this member is a business owner - if so, deduct their balance from the invoice
-    if (ownerBusinessMap.has(memberId)) {
-      const { data: member } = await supabase
-        .from("members")
-        .select("balance")
-        .eq("id", memberId)
-        .single();
+    // Apply approved offset if one exists
+    if (offsetMap.has(memberId)) {
+      const offsetAmount = offsetMap.get(memberId)!;
+      invoiceAmount -= offsetAmount;
 
-      if (member && member.balance > 0) {
-        const offsetAmount = Math.min(invoiceAmount, member.balance);
-        invoiceAmount -= offsetAmount;
-
-        // Record the offset as a special transaction for audit
-        offsetTransactions.push({
-          member_id: memberId,
-          business_id: null,
-          amount: -offsetAmount,
-          balance_before: member.balance,
-          balance_after: member.balance - offsetAmount,
-          description: `Owner offset applied during billing cycle ${cycle.name}`,
-          source: "admin_panel",
-          billing_cycle_id: cycleId,
-          created_at: new Date().toISOString(),
-        });
-      }
+      // Record the offset as a special transaction for audit
+      offsetTransactions.push({
+        member_id: memberId,
+        business_id: null,
+        amount: -offsetAmount,
+        description: `Owner offset approved for billing cycle ${cycle.name}`,
+        source: "owner_offset",
+        billing_cycle_id: cycleId,
+        created_at: new Date().toISOString(),
+      });
     }
 
     invoices.push({
@@ -283,6 +269,15 @@ export async function closeBillingCycle(cycleId: string) {
     }
   }
 
+  // Mark applied offsets as finalized
+  if (approvedOffsets && approvedOffsets.length > 0) {
+    const approvedOffsetIds = approvedOffsets.map(o => o.id);
+    await supabase
+      .from("owner_offsets")
+      .update({ status: "finalized" })
+      .in("id", approvedOffsetIds);
+  }
+
   // Update cycle status with end date
   await supabase
     .from("billing_cycles")
@@ -299,10 +294,97 @@ export async function closeBillingCycle(cycleId: string) {
   return { success: true, invoiceCount: invoices.length };
 }
 
-/**
- * Manually reset all member balances to 0
- * Use this after closing a billing cycle if balances weren't reset
- */
+export async function requestOwnerOffset(cycleId: string, memberId: string, offsetAmount: number) {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("owner_offsets")
+    .insert({
+      billing_cycle_id: cycleId,
+      member_id: memberId,
+      offset_amount: offsetAmount,
+      status: "pending",
+      requested_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath(`/admin/billing/cycles/${cycleId}`);
+  return { success: true, offsetId: data?.id };
+}
+
+export async function approveOwnerOffset(offsetId: string) {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("owner_offsets")
+    .update({
+      status: "approved",
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", offsetId)
+    .select()
+    .single();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  // Get cycle ID to revalidate
+  if (data?.billing_cycle_id) {
+    revalidatePath(`/admin/billing/cycles/${data.billing_cycle_id}`);
+  }
+
+  return { success: true };
+}
+
+export async function rejectOwnerOffset(offsetId: string) {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("owner_offsets")
+    .update({
+      status: "rejected",
+      rejected_at: new Date().toISOString(),
+    })
+    .eq("id", offsetId)
+    .select()
+    .single();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  if (data?.billing_cycle_id) {
+    revalidatePath(`/admin/billing/cycles/${data.billing_cycle_id}`);
+  }
+
+  return { success: true };
+}
+
+export async function getOwnerOffsetsForCycle(cycleId: string) {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("owner_offsets")
+    .select(`
+      *,
+      member:members(id, first_name, last_name, balance)
+    `)
+    .eq("billing_cycle_id", cycleId)
+    .order("requested_at", { ascending: false });
+
+  if (error) {
+    return { success: false, error: error.message, offsets: [] };
+  }
+
+  return { success: true, offsets: data || [] };
+}
+
 export async function resetAllMemberBalances() {
   const supabase = createAdminClient();
 

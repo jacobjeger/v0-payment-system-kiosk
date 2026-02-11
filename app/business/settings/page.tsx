@@ -26,10 +26,10 @@ export default function BusinessSettingsPage() {
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
   
   // Password state
-  const [newPin, setNewPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [savingPin, setSavingPin] = useState(false);
-  const [pinMessage, setPinMessage] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
   
   const initRef = React.useRef(false);
 
@@ -94,46 +94,53 @@ export default function BusinessSettingsPage() {
     setSaving(false);
   }
 
-  async function handleUpdatePin(e: React.FormEvent) {
+  async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
     if (!business) return;
     
-    if (!newPin || !confirmPin) {
-      setPinMessage("Please fill in both fields");
+    if (!newPassword || !confirmPassword) {
+      setPasswordMessage("Please fill in both fields");
       return;
     }
     
-    if (newPin !== confirmPin) {
-      setPinMessage("PINs do not match");
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Passwords do not match");
       return;
     }
     
-    if (newPin.length < 4) {
-      setPinMessage("PIN must be at least 4 characters");
+    if (newPassword.length < 6) {
+      setPasswordMessage("Password must be at least 6 characters");
       return;
     }
     
-    setSavingPin(true);
-    setPinMessage("");
+    setSavingPassword(true);
+    setPasswordMessage("");
     
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("businesses")
-      .update({
-        pin_code: newPin,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", business.id);
-    
-    if (error) {
-      setPinMessage("Error updating PIN: " + error.message);
-    } else {
-      setPinMessage("PIN updated successfully!");
-      setNewPin("");
-      setConfirmPin("");
+    try {
+      // Call server action to hash and update password
+      const response = await fetch("/api/business/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          businessId: business.id,
+          password: newPassword 
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        setPasswordMessage("Error updating password: " + (result.error || "Unknown error"));
+      } else {
+        setPasswordMessage("Password updated successfully!");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } catch (error) {
+      setPasswordMessage("Error updating password: " + (error as Error).message);
     }
     
-    setSavingPin(false);
+    setSavingPassword(false);
   }
 
   function addPresetAmount() {
@@ -288,52 +295,52 @@ export default function BusinessSettingsPage() {
             </CardContent>
           </Card>
 
-          {/* PIN/Password Settings */}
+          {/* Password Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Lock className="w-5 h-5" />
-                Change Business PIN
+                Change Password
               </CardTitle>
               <CardDescription>
-                Update your business login PIN
+                Update your business login password
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleUpdatePin} className="space-y-4">
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-pin">New PIN</Label>
+                  <Label htmlFor="new-password">New Password</Label>
                   <Input
-                    id="new-pin"
+                    id="new-password"
                     type="password"
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value)}
-                    placeholder="Enter new PIN"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-pin">Confirm PIN</Label>
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
                   <Input
-                    id="confirm-pin"
+                    id="confirm-password"
                     type="password"
-                    value={confirmPin}
-                    onChange={(e) => setConfirmPin(e.target.value)}
-                    placeholder="Confirm PIN"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
                     required
                   />
                 </div>
-                {pinMessage && (
+                {passwordMessage && (
                   <div className={`p-3 rounded-lg text-sm ${
-                    pinMessage.includes("Error") || pinMessage.includes("do not match") || pinMessage.includes("at least")
+                    passwordMessage.includes("Error") || passwordMessage.includes("do not match") || passwordMessage.includes("at least")
                       ? "bg-destructive/10 text-destructive" 
                       : "bg-green-100 text-green-700"
                   }`}>
-                    {pinMessage}
+                    {passwordMessage}
                   </div>
                 )}
-                <Button type="submit" disabled={savingPin} className="w-full">
-                  {savingPin ? "Updating..." : "Update PIN"}
+                <Button type="submit" disabled={savingPassword} className="w-full">
+                  {savingPassword ? "Updating..." : "Update Password"}
                 </Button>
               </form>
             </CardContent>

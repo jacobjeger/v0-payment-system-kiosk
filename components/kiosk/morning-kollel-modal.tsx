@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { logMorningKollel } from "@/app/actions/morning-kollel";
+import { logMorningKollel, getMorningKollelStats } from "@/app/actions/morning-kollel";
 import { Coffee, BarChart3 } from "lucide-react";
 
 interface MorningKollelModalProps {
@@ -26,19 +26,32 @@ export function MorningKollelModal({ isOpen, onClose, onSuccess }: MorningKollel
 
   const handleConfirm = async () => {
     setIsLoading(true);
-    const result = await logMorningKollel();
+    console.log("[v0] Logging morning kollel...");
     
-    if (result.success) {
-      // Show stats after successful log
-      const { getMorningKollelStats } = await import("@/app/actions/morning-kollel");
-      const statsResult = await getMorningKollelStats();
-      if (statsResult.success) {
-        setStats(statsResult.stats);
-        setShowStats(true);
+    try {
+      const result = await logMorningKollel();
+      console.log("[v0] Log result:", result);
+      
+      if (result.success) {
+        // Show stats after successful log
+        const statsResult = await getMorningKollelStats();
+        console.log("[v0] Stats result:", statsResult);
+        
+        if (statsResult.success) {
+          setStats(statsResult.stats);
+          setShowStats(true);
+        }
+        onSuccess?.();
+      } else {
+        console.error("[v0] Failed to log:", result.error);
+        alert(`Error: ${result.error}`);
       }
-      onSuccess?.();
+    } catch (error) {
+      console.error("[v0] Error in handleConfirm:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

@@ -70,20 +70,21 @@ export function MemberSelector({ members, onSelect }: MemberSelectorProps) {
 
   return (
     <div className="flex flex-col h-full relative">
+      {/* Morning Kollel Button - Top Right */}
+      <button
+        onClick={() => setShowMorningKollel(true)}
+        className="absolute top-2 right-2 z-20 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg p-1.5 flex items-center gap-1 transition-all btn-press text-xs font-medium text-amber-900"
+        title="Log Morning Kollel coffee"
+      >
+        <Coffee className="w-3.5 h-3.5" />
+        <span>Kollel</span>
+      </button>
+
       {/* Header */}
       <div className="text-center mb-4 flex-shrink-0">
         <h2 className="text-lg font-semibold text-stone-900">Select Your Name</h2>
         <p className="text-stone-500 text-xs">Tap to continue</p>
       </div>
-
-      {/* Morning Kollel Button */}
-      <button
-        onClick={() => setShowMorningKollel(true)}
-        className="w-full mb-3 bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-lg p-3 flex items-center justify-center gap-2 transition-all btn-press"
-      >
-        <Coffee className="w-5 h-5 text-amber-700" />
-        <span className="font-semibold text-amber-900">Morning Kollel</span>
-      </button>
 
       {/* Search */}
       <div className="mb-4 flex-shrink-0">

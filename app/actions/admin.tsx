@@ -1144,6 +1144,85 @@ export async function updateBusinessFee(id: string, feePercentage: number) {
   return { success: true };
 }
 
+// Password reset for both businesses and members
+export async function requestPasswordReset(email: string, type: "business" | "member" = "business") {
+  const supabase = createAdminClient();
+
+  try {
+    if (type === "business") {
+      // Get business by email (notification_email is stored in 'email' column)
+      const { data: business, error: businessError } = await supabase
+        .from("businesses")
+        .select("id, email, auth_user_id, username")
+        .eq("email", email.toLowerCase())
+        .single();
+
+      if (businessError || !business) {
+        return { success: false, error: "Business not found with this email" };
+      }
+
+      // If business has auth_user_id, use Supabase Auth for password reset
+      if (business.auth_user_id) {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/business/reset-password`,
+        });
+
+        if (resetError) {
+          return { success: false, error: resetError.message };
+        }
+      } else {
+        // For username-only businesses, send a reset code via email
+        const resetCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+        // Store reset code in database
+        const { error: storeError } = await supabase
+          .from("password_reset_tokens")
+          .insert({
+            email: email.toLowerCase(),
+            token: resetCode,
+            expires_at: expiresAt.toISOString(),
+            type: "business",
+          });
+
+        if (storeError) {
+          return { success: false, error: "Failed to create reset token" };
+        }
+
+        // Send email with reset code
+        const resetLink = `${process.env.NEXT_PUBLIC_SITE_URL}/business/reset-password?token=${resetCode}`;
+        await sendPasswordResetEmail(email, resetLink, business.username || "Business");
+      }
+
+      return { success: true, message: "Password reset link sent to your notification email" };
+    } else {
+      // Member password reset
+      const { data: member, error: memberError } = await supabase
+        .from("members")
+        .select("id, email, auth_user_id, first_name, last_name")
+        .eq("email", email.toLowerCase())
+        .single();
+
+      if (memberError || !member) {
+        return { success: false, error: "Member not found with this email" };
+      }
+
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/member/reset-password`,
+      });
+
+      if (resetError) {
+        return { success: false, error: resetError.message };
+      }
+
+      return { success: true, message: "Password reset link sent to your email" };
+    }
+  } catch (error) {
+    console.error("[v0] Password reset error:", error);
+    return { success: false, error: "Failed to send password reset email" };
+  }
+}
+
 // Product actions
 export async function addProduct(data: {
   businessId: string;

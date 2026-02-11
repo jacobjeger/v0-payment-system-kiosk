@@ -74,6 +74,15 @@ export default function BusinessSettingsPage() {
     setSaving(true);
     setMessage("");
 
+    console.log("[v0] Saving business settings:", { 
+      businessId: business.id, 
+      name, 
+      description, 
+      presetAmounts, 
+      activeDaysAverage,
+      notificationEmail 
+    });
+
     const supabase = createClient();
     const { error } = await supabase
       .from("businesses")
@@ -86,6 +95,8 @@ export default function BusinessSettingsPage() {
         updated_at: new Date().toISOString(),
       })
       .eq("id", business.id);
+
+    console.log("[v0] Save response:", { error });
 
     if (error) {
       setMessage("Error saving settings: " + error.message);
@@ -122,6 +133,7 @@ export default function BusinessSettingsPage() {
     setPasswordMessage("");
     
     try {
+      console.log("[v0] Updating password for business:", business.id);
       // Call server action to hash and update password
       const response = await fetch("/api/business/update-password", {
         method: "POST",
@@ -133,6 +145,7 @@ export default function BusinessSettingsPage() {
       });
       
       const result = await response.json();
+      console.log("[v0] Password update response:", result);
       
       if (!result.success) {
         setPasswordMessage("Error updating password: " + (result.error || "Unknown error"));
@@ -142,6 +155,7 @@ export default function BusinessSettingsPage() {
         setConfirmPassword("");
       }
     } catch (error) {
+      console.log("[v0] Password update error:", error);
       setPasswordMessage("Error updating password: " + (error as Error).message);
     }
     

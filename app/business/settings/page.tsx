@@ -344,8 +344,6 @@ export default function BusinessSettingsPage() {
             </CardContent>
           </Card>
 
-          </Card>
-
           {message && (
             <div className={`p-3 rounded-lg text-sm ${
               message.includes("Error") 

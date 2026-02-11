@@ -10,10 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, Lock, Mail, Eye, EyeOff, Plus, X, DollarSign, BarChart3 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X } from "lucide-react";
 import type { Business } from "@/lib/types";
-import type { User } from "@supabase/supabase-js";
 
 export default function BusinessSettingsPage() {
   const router = useRouter();
@@ -28,15 +26,6 @@ export default function BusinessSettingsPage() {
   const [presetAmounts, setPresetAmounts] = useState<number[]>([]);
   const [newAmount, setNewAmount] = useState("");
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
-  
-  // Profile state
-  const [user, setUser] = useState<User | null>(null);
-  const [accountEmail, setAccountEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPasswords, setShowPasswords] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMessage, setProfileMessage] = useState({ type: "", text: "" });
   const initRef = React.useRef(false);
 
   useEffect(() => {
@@ -49,16 +38,7 @@ export default function BusinessSettingsPage() {
     try {
       const supabase = createClient();
       
-      // Get auth user FIRST
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        setAccountEmail(session.user.email);
-        setUser(session.user);
-      } else {
-        setProfileMessage({ type: "error", text: "Auth session missing!" });
-      }
-      
-      // Then load business
+      // Load business only - no auth user needed for business portal
       const pinBusinessId = sessionStorage.getItem("business_id") || localStorage.getItem("business_id");
       if (pinBusinessId) {
         const { data } = await supabase.from("businesses").select("*").eq("id", pinBusinessId).single();
@@ -121,50 +101,9 @@ export default function BusinessSettingsPage() {
     setPresetAmounts(presetAmounts.filter(a => a !== amount));
   }
 
-  async function handleUpdateEmail(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingProfile(true);
-    setProfileMessage({ type: "", text: "" });
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ email: accountEmail });
-
-    if (error) {
-      setProfileMessage({ type: "error", text: error.message });
-    } else {
-      setProfileMessage({ type: "success", text: "Email updated! Check your inbox to confirm." });
-    }
-    setSavingProfile(false);
-  }
-
-  async function handleUpdatePassword(e: React.FormEvent) {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      setProfileMessage({ type: "error", text: "Passwords do not match" });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setProfileMessage({ type: "error", text: "Password must be at least 6 characters" });
-      return;
-    }
-
-    setSavingProfile(true);
-    setProfileMessage({ type: "", text: "" });
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-
-    if (error) {
-      setProfileMessage({ type: "error", text: error.message });
-    } else {
-      setProfileMessage({ type: "success", text: "Password updated successfully!" });
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    setSavingProfile(false);
-  }
+  // Email and password updates are disabled for business portal
+  // Businesses cannot change admin credentials
+  // Contact admin for password changes
 
   if (loading) {
     return (
@@ -321,98 +260,6 @@ export default function BusinessSettingsPage() {
             {saving ? "Saving..." : "Save Settings"}
           </Button>
         </form>
-
-        {/* Account Profile Section */}
-        {user && (
-          <div className="mt-8 pt-8 border-t">
-            <h2 className="text-xl font-bold mb-6">Account Settings</h2>
-            
-            {profileMessage.text && (
-              <div className={`mb-6 p-4 rounded-lg ${
-                profileMessage.type === "error" 
-                  ? "bg-destructive/10 text-destructive" 
-                  : "bg-green-100 text-green-700"
-              }`}>
-                {profileMessage.text}
-              </div>
-            )}
-
-            {/* Email Section */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Mail className="w-4 h-4" />
-                  Email Address
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleUpdateEmail} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="accountEmail">Email</Label>
-                    <Input
-                      id="accountEmail"
-                      type="email"
-                      value={accountEmail}
-                      onChange={(e) => setAccountEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" size="sm" disabled={savingProfile}>
-                    Update Email
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Password Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Lock className="w-4 h-4" />
-                  Change Password
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleUpdatePassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="newPassword"
-                        type={showPasswords ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                        onClick={() => setShowPasswords(!showPasswords)}
-                      >
-                        {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type={showPasswords ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                  <Button type="submit" size="sm" disabled={savingProfile}>
-                    Update Password
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </main>
     </div>
   );

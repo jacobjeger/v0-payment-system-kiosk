@@ -44,6 +44,14 @@ interface PayoutData {
   feeAmount: number;
   netPayout: number;
   transactionCount: number;
+  ownerMember?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    balance: number;
+  } | null;
+  offsetApplied?: number;
+  adjustedPayout?: number;
 }
 
 interface TransactionDetail {
@@ -102,7 +110,7 @@ export default function PayoutsPage() {
     setLoading(true);
     const supabase = createClient();
 
-    // Get all active businesses
+    // Get all active businesses with owner info
     const { data: businesses } = await supabase
       .from("businesses")
       .select("*")
@@ -113,6 +121,19 @@ export default function PayoutsPage() {
       setPayouts([]);
       setLoading(false);
       return;
+    }
+
+    // Get all members (to match with business owners)
+    const { data: allMembers } = await supabase
+      .from("members")
+      .select("id, first_name, last_name, balance, email")
+      .eq("is_active", true);
+
+    const membersMap = new Map();
+    if (allMembers) {
+      allMembers.forEach(m => {
+        if (m.email) membersMap.set(m.email.toLowerCase(), m);
+      });
     }
 
     // Get transactions for each business using billing_cycle_id
@@ -130,12 +151,35 @@ export default function PayoutsPage() {
       const feeAmount = grossRevenue * (feePercentage / 100);
       const netPayout = grossRevenue - feeAmount;
 
+      // Try to find owner member by email or owner_name
+      let ownerMember = null;
+      if (business.email) {
+        ownerMember = membersMap.get(business.email.toLowerCase());
+      }
+      if (!ownerMember && business.owner_name) {
+        // Fallback: search by name
+        const membersByName = allMembers?.filter(m => 
+          `${m.first_name} ${m.last_name}`.toLowerCase() === business.owner_name?.toLowerCase()
+        );
+        if (membersByName && membersByName.length > 0) {
+          ownerMember = membersByName[0];
+        }
+      }
+
       payoutData.push({
         business,
         grossRevenue,
         feeAmount,
         netPayout,
         transactionCount: transactions?.length || 0,
+        ownerMember: ownerMember ? {
+          id: ownerMember.id,
+          first_name: ownerMember.first_name,
+          last_name: ownerMember.last_name,
+          balance: ownerMember.balance,
+        } : null,
+        offsetApplied: 0,
+        adjustedPayout: netPayout,
       });
     }
 
@@ -146,9 +190,70 @@ export default function PayoutsPage() {
     setLoading(false);
   }
 
+  async function applyOwnerOffset(payout: PayoutData) {
+    if (!payout.ownerMember || !payout.ownerMember.balance) {
+      alert("This business owner has no member balance to offset");
+      return;
+    }
+
+    const offsetAmount = Math.min(payout.netPayout, payout.ownerMember.balance);
+    
+    if (offsetAmount <= 0) {
+      alert("No balance to offset");
+      return;
+    }
+
+    const confirmed = confirm(
+      `Apply offset of ₪${offsetAmount.toFixed(2)} from ${payout.ownerMember.first_name} ${payout.ownerMember.last_name}'s member balance? ` +
+      `This will reduce the member balance and adjust the payout.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch("/api/admin/apply-owner-offset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId: payout.business.id,
+          memberId: payout.ownerMember.id,
+          billingCycleId: selectedCycleId,
+          offsetAmount,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update the payout display
+        setPayouts(prevPayouts =>
+          prevPayouts.map(p => {
+            if (p.business.id === payout.business.id && p.ownerMember) {
+              return {
+                ...p,
+                offsetApplied: offsetAmount,
+                adjustedPayout: p.netPayout - offsetAmount,
+                ownerMember: {
+                  ...p.ownerMember,
+                  balance: result.memberBalanceAfter,
+                },
+              };
+            }
+            return p;
+          })
+        );
+        alert(`Offset applied successfully! Member balance reduced to ₪${result.memberBalanceAfter.toFixed(2)}`);
+      } else {
+        alert(`Error applying offset: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Error: ${(error as Error).message}`);
+    }
+  }
+
   const totalGross = payouts.reduce((sum, p) => sum + p.grossRevenue, 0);
   const totalFees = payouts.reduce((sum, p) => sum + p.feeAmount, 0);
-  const totalPayouts = payouts.reduce((sum, p) => sum + p.netPayout, 0);
+  const totalPayouts = payouts.reduce((sum, p) => sum + (p.adjustedPayout || p.netPayout), 0);
 
   async function loadTransactions(payout: PayoutData) {
     setSelectedBusiness(payout);
@@ -360,6 +465,9 @@ export default function PayoutsPage() {
                     <TableHead className="text-right">Fee %</TableHead>
                     <TableHead className="text-right">Fee Amount</TableHead>
                     <TableHead className="text-right">Net Payout</TableHead>
+                    <TableHead className="text-right">Owner Balance</TableHead>
+                    <TableHead className="text-right">Adjusted Payout</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -390,6 +498,38 @@ export default function PayoutsPage() {
                       <TableCell className="text-right font-semibold">
                         ₪{payout.netPayout.toFixed(2)}
                       </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {payout.ownerMember ? (
+                          <span className={payout.ownerMember.balance > 0 ? "text-amber-600 font-medium" : ""}>
+                            ₪{payout.ownerMember.balance.toFixed(2)}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={payout.offsetApplied && payout.offsetApplied > 0 ? "text-green-600 font-medium" : ""}>
+                          ₪{(payout.adjustedPayout || payout.netPayout).toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {payout.ownerMember && payout.ownerMember.balance > 0 && (!payout.offsetApplied || payout.offsetApplied === 0) ? (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              applyOwnerOffset(payout);
+                            }}
+                          >
+                            Apply Offset
+                          </Button>
+                        ) : payout.offsetApplied && payout.offsetApplied > 0 ? (
+                          <span className="text-xs text-green-600 font-medium">✓ Offset Applied</span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {/* Totals Row */}
@@ -406,8 +546,13 @@ export default function PayoutsPage() {
                       ₪{totalFees.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
+                      ₪{payouts.reduce((sum, p) => sum + p.netPayout, 0).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right">
                       ₪{totalPayouts.toFixed(2)}
                     </TableCell>
+                    <TableCell>-</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

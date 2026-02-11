@@ -112,7 +112,11 @@ export default function BusinessSettingsPage() {
 
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (!business) return;
+    console.log("[v0] handleUpdatePassword called!");
+    if (!business) {
+      console.log("[v0] No business, returning");
+      return;
+    }
     
     if (!newPassword || !confirmPassword) {
       setPasswordMessage("Please fill in both fields");

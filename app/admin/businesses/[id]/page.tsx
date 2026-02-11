@@ -616,6 +616,11 @@ export default function BusinessDetailPage({
                 )}
                 <p className="text-xs text-muted-foreground">Email address to receive transaction notifications</p>
               </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Percent className="w-4 h-4" />
+                  Fee Percentage
+                </Label>
                 {editingFee ? (
                   <div className="flex items-center gap-2">
                     <Input

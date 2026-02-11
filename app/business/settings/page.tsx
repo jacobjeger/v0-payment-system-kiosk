@@ -344,8 +344,17 @@ export default function BusinessSettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Password Settings */}
-          <Card>
+          </Card>
+
+          {message && (
+            <div className={`p-3 rounded-lg text-sm ${
+              message.includes("Error") 
+                ? "bg-destructive/10 text-destructive" 
+                : "bg-green-100 text-green-700"
+            }`}>
+              {message}
+            </div>
+          )}
 
           <Button type="submit" disabled={saving} className="w-full">
             <Save className="w-4 h-4 mr-2" />

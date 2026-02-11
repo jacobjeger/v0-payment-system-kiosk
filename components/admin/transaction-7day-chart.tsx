@@ -29,11 +29,29 @@ export function Transaction7DayChart() {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    const { data: transactions } = await supabase
-      .from("transactions")
-      .select("amount, created_at")
-      .gte("created_at", startDate.toISOString())
-      .lte("created_at", endDate.toISOString());
+    // Fetch all transactions with pagination for >1000 rows
+    let allTransactions: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch } = await supabase
+        .from("transactions")
+        .select("amount, created_at")
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString())
+        .range(offset, offset + 999);
+
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allTransactions = allTransactions.concat(batch);
+        offset += 1000;
+        if (batch.length < 1000) {
+          hasMore = false;
+        }
+      }
+    }
 
     // Group by date
     const dailyMap = new Map<string, { amount: number; count: number }>();
@@ -50,7 +68,7 @@ export function Transaction7DayChart() {
     }
 
     // Sum transactions by date
-    transactions?.forEach((t) => {
+    allTransactions?.forEach((t) => {
       const date = new Date(t.created_at).toLocaleDateString("en-IL", {
         month: "short",
         day: "numeric",

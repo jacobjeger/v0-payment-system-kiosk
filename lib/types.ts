@@ -13,6 +13,7 @@ export interface Business {
   email: string | null
   phone: string | null
   owner_name: string | null
+  owner_member_id?: string | null
   username: string | null
   can_add_transactions?: boolean
   created_at: string

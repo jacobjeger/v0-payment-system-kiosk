@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X, Lock } from "lucide-react";
+import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X, Lock, Mail } from "lucide-react";
 import type { Business } from "@/lib/types";
 
 export default function BusinessSettingsPage() {
@@ -24,6 +24,7 @@ export default function BusinessSettingsPage() {
   const [presetAmounts, setPresetAmounts] = useState<number[]>([]);
   const [newAmount, setNewAmount] = useState("");
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
+  const [notificationEmail, setNotificationEmail] = useState("");
   
   // Password state
   const [newPassword, setNewPassword] = useState("");
@@ -53,6 +54,7 @@ export default function BusinessSettingsPage() {
           setDescription(data.description || "");
           setPresetAmounts(data.preset_amounts || []);
           setActiveDaysAverage(data.active_days_average || false);
+          setNotificationEmail(data.email || "");
         }
       }
       
@@ -78,6 +80,7 @@ export default function BusinessSettingsPage() {
         description: description || null,
         preset_amounts: presetAmounts.length > 0 ? presetAmounts : null,
         active_days_average: activeDaysAverage,
+        email: notificationEmail || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", business.id);
@@ -290,6 +293,31 @@ export default function BusinessSettingsPage() {
                   id="active-days"
                   checked={activeDaysAverage}
                   onCheckedChange={setActiveDaysAverage}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notification Email */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Notification Email
+              </CardTitle>
+              <CardDescription>
+                Email address for receiving transaction alerts and reports (optional)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="notification-email">Email Address</Label>
+                <Input
+                  id="notification-email"
+                  type="email"
+                  value={notificationEmail}
+                  onChange={(e) => setNotificationEmail(e.target.value)}
+                  placeholder="your@email.com"
                 />
               </div>
             </CardContent>

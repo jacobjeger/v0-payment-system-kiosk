@@ -144,6 +144,7 @@ export default function BusinessSettingsPage() {
         }),
       });
       
+      console.log("[v0] API response status:", response.status);
       const result = await response.json();
       console.log("[v0] Password update response:", result);
       

@@ -74,6 +74,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OwnerOffsetsCard } from "@/components/admin/owner-offsets-card";
 import type { BillingCycle, Invoice, Member } from "@/lib/types";
 
 interface PaymentDetail {
@@ -762,6 +763,11 @@ export default function BillingCycleDetailPage({
           </Card>
         </div>
       )}
+
+      {/* Owner Balance Offsets - Only show when cycle is active or closed */}
+      {cycle.status === "active" || cycle.status === "closed" ? (
+        <OwnerOffsetsCard cycleId={cycle.id} onOffsetsUpdated={loadData} />
+      ) : null}
 
       {/* Bulk Actions Toolbar */}
       {(cycle.status === "closed" || cycle.status === "invoiced") && (

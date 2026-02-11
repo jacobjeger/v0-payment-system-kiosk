@@ -44,7 +44,18 @@ export function MorningKollelModal({ isOpen, onClose, onSuccess }: MorningKollel
         onSuccess?.();
       } else {
         console.error("[v0] Failed to log:", result.error);
-        alert(`Error: ${result.error}`);
+        // Check if it's a setup error
+        if (result.error?.includes("not yet initialized")) {
+          alert("Morning Kollel feature is being set up. Please try again in a moment.");
+          // Try to initialize
+          try {
+            await fetch("/api/setup/morning-kollel-init", { method: "POST" });
+          } catch (e) {
+            console.error("[v0] Failed to auto-initialize:", e);
+          }
+        } else {
+          alert(`Error: ${result.error}`);
+        }
       }
     } catch (error) {
       console.error("[v0] Error in handleConfirm:", error);

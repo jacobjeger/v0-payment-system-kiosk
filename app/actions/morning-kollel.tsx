@@ -15,7 +15,21 @@ export async function logMorningKollel() {
       .from("morning_kollel_logs")
       .select("id, count")
       .eq("logged_date", today)
-      .single();
+      .maybeSingle();
+
+    // If table doesn't exist, show setup message
+    if (selectError?.code === "PGRST116" || selectError?.message?.includes("not found")) {
+      console.error("[v0] Table not found. Please contact admin to set up Morning Kollel feature.");
+      return { 
+        success: false, 
+        error: "Morning Kollel feature not yet initialized. Please contact the administrator." 
+      };
+    }
+
+    if (selectError && selectError.code !== "PGRST116") {
+      console.error("[v0] Select error:", selectError);
+      return { success: false, error: selectError.message };
+    }
 
     let result;
 
@@ -32,6 +46,7 @@ export async function logMorningKollel() {
         .single();
 
       if (error) {
+        console.error("[v0] Update error:", error);
         return { success: false, error: error.message };
       }
       result = data;
@@ -48,6 +63,7 @@ export async function logMorningKollel() {
         .single();
 
       if (error) {
+        console.error("[v0] Insert error:", error);
         return { success: false, error: error.message };
       }
       result = data;
@@ -56,7 +72,7 @@ export async function logMorningKollel() {
     revalidatePath("/kiosk");
     return { success: true, count: result.count, date: result.logged_date };
   } catch (error) {
-    console.error("[v0] Error logging morning kollel:", error);
+    console.error("[v0] Exception in logMorningKollel:", error);
     return { success: false, error: "Failed to log coffee" };
   }
 }

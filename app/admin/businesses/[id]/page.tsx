@@ -59,6 +59,7 @@ export default function BusinessDetailPage({
     email: "",
     phone: "",
     username: "",
+    notificationEmail: "",
   });
   const [accountAction, setAccountAction] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
@@ -157,6 +158,7 @@ export default function BusinessDetailPage({
       email: business.email || "",
       phone: business.phone || "",
       username: business.username || "",
+      notificationEmail: (business as any).notification_email || "",
     });
     setEditingProfile(true);
   };
@@ -172,6 +174,7 @@ export default function BusinessDetailPage({
       email: profileForm.email || null,
       phone: profileForm.phone || null,
       username: profileForm.username || null,
+      notification_email: profileForm.notificationEmail || null,
     });
     setSavingProfile(false);
     setEditingProfile(false);
@@ -598,24 +601,21 @@ export default function BusinessDetailPage({
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  Phone
+                  <Mail className="w-4 h-4" />
+                  Notification Email
                 </Label>
                 {editingProfile ? (
                   <Input
-                    type="tel"
-                    value={profileForm.phone}
-                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    type="email"
+                    value={profileForm.notificationEmail}
+                    onChange={(e) => setProfileForm({ ...profileForm, notificationEmail: e.target.value })}
+                    placeholder="Email for transaction alerts"
                   />
                 ) : (
-                  <p className="font-medium">{business.phone || "-"}</p>
+                  <p className="font-medium">{(business as any).notification_email || "-"}</p>
                 )}
+                <p className="text-xs text-muted-foreground">Email address to receive transaction notifications</p>
               </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Percent className="w-4 h-4" />
-                  Fee Percentage
-                </Label>
                 {editingFee ? (
                   <div className="flex items-center gap-2">
                     <Input

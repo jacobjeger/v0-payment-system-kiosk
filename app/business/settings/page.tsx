@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -8,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X } from "lucide-react";
+import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X, Lock } from "lucide-react";
 import type { Business } from "@/lib/types";
 
 export default function BusinessSettingsPage() {
@@ -26,6 +24,13 @@ export default function BusinessSettingsPage() {
   const [presetAmounts, setPresetAmounts] = useState<number[]>([]);
   const [newAmount, setNewAmount] = useState("");
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
+  
+  // Password state
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [savingPin, setSavingPin] = useState(false);
+  const [pinMessage, setPinMessage] = useState("");
+  
   const initRef = React.useRef(false);
 
   useEffect(() => {
@@ -89,6 +94,48 @@ export default function BusinessSettingsPage() {
     setSaving(false);
   }
 
+  async function handleUpdatePin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!business) return;
+    
+    if (!newPin || !confirmPin) {
+      setPinMessage("Please fill in both fields");
+      return;
+    }
+    
+    if (newPin !== confirmPin) {
+      setPinMessage("PINs do not match");
+      return;
+    }
+    
+    if (newPin.length < 4) {
+      setPinMessage("PIN must be at least 4 characters");
+      return;
+    }
+    
+    setSavingPin(true);
+    setPinMessage("");
+    
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("businesses")
+      .update({
+        pin_code: newPin,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", business.id);
+    
+    if (error) {
+      setPinMessage("Error updating PIN: " + error.message);
+    } else {
+      setPinMessage("PIN updated successfully!");
+      setNewPin("");
+      setConfirmPin("");
+    }
+    
+    setSavingPin(false);
+  }
+
   function addPresetAmount() {
     const amount = parseFloat(newAmount);
     if (isNaN(amount) || amount <= 0) return;
@@ -100,10 +147,6 @@ export default function BusinessSettingsPage() {
   function removePresetAmount(amount: number) {
     setPresetAmounts(presetAmounts.filter(a => a !== amount));
   }
-
-  // Email and password updates are disabled for business portal
-  // Businesses cannot change admin credentials
-  // Contact admin for password changes
 
   if (loading) {
     return (
@@ -245,6 +288,57 @@ export default function BusinessSettingsPage() {
             </CardContent>
           </Card>
 
+          {/* PIN/Password Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="w-5 h-5" />
+                Change Business PIN
+              </CardTitle>
+              <CardDescription>
+                Update your business login PIN
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUpdatePin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-pin">New PIN</Label>
+                  <Input
+                    id="new-pin"
+                    type="password"
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value)}
+                    placeholder="Enter new PIN"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-pin">Confirm PIN</Label>
+                  <Input
+                    id="confirm-pin"
+                    type="password"
+                    value={confirmPin}
+                    onChange={(e) => setConfirmPin(e.target.value)}
+                    placeholder="Confirm PIN"
+                    required
+                  />
+                </div>
+                {pinMessage && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    pinMessage.includes("Error") || pinMessage.includes("do not match") || pinMessage.includes("at least")
+                      ? "bg-destructive/10 text-destructive" 
+                      : "bg-green-100 text-green-700"
+                  }`}>
+                    {pinMessage}
+                  </div>
+                )}
+                <Button type="submit" disabled={savingPin} className="w-full">
+                  {savingPin ? "Updating..." : "Update PIN"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
           {message && (
             <div className={`p-3 rounded-lg text-sm ${
               message.includes("Error") 
@@ -257,10 +351,5 @@ export default function BusinessSettingsPage() {
 
           <Button type="submit" disabled={saving} className="w-full">
             <Save className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save Settings"}
+            {saving ? "Saving..." : "Save Business Settings"}
           </Button>
-        </form>
-      </main>
-    </div>
-  );
-}

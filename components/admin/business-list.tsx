@@ -6,18 +6,53 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toggleBusinessStatus } from "@/app/actions/admin";
-import type { Business } from "@/lib/types";
-import { Search } from "lucide-react";
+import { OwnerSelectionDialog } from "./owner-selection-dialog";
+import type { Business, Member } from "@/lib/types";
+import { Search, Users } from "lucide-react";
 
 interface BusinessListProps {
   businesses: Business[];
 }
 
-export function BusinessList({ businesses }: BusinessListProps) {
+export function BusinessList({ businesses: initialBusinesses }: BusinessListProps) {
   const [search, setSearch] = useState("");
+  const [businesses, setBusinesses] = useState(initialBusinesses);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [ownerDialogOpen, setOwnerDialogOpen] = useState(false);
+  const [currentOwnerInfo, setCurrentOwnerInfo] = useState<{
+    id?: string;
+    name?: string;
+  } | null>(null);
   
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     await toggleBusinessStatus(id, !currentStatus);
+  };
+
+  const handleOpenOwnerDialog = (business: Business) => {
+    setSelectedBusinessId(business.id);
+    // Parse owner info from owner_name field if it exists
+    setCurrentOwnerInfo({
+      id: (business as any).owner_member_id,
+      name: business.owner_name,
+    });
+    setOwnerDialogOpen(true);
+  };
+
+  const handleOwnerSelected = (member: Member | null) => {
+    if (selectedBusinessId) {
+      setBusinesses(
+        businesses.map((b) =>
+          b.id === selectedBusinessId
+            ? {
+                ...b,
+                owner_name: member
+                  ? `${member.first_name} ${member.last_name}`
+                  : null,
+              }
+            : b
+        )
+      );
+    }
   };
 
   const filteredBusinesses = businesses.filter((business) => {
@@ -72,12 +107,28 @@ export function BusinessList({ businesses }: BusinessListProps) {
                 </p>
               )}
 
+              {business.owner_name && (
+                <div className="mb-4 p-2 bg-blue-50 rounded border border-blue-200">
+                  <p className="text-xs text-blue-900">
+                    <strong>Owner:</strong> {business.owner_name}
+                  </p>
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Link href={`/admin/businesses/${business.id}`} className="flex-1">
                   <Button variant="outline" className="w-full bg-transparent">
                     Manage
                   </Button>
                 </Link>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleOpenOwnerDialog(business)}
+                  title="Set business owner"
+                >
+                  <Users className="w-4 h-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -105,6 +156,21 @@ export function BusinessList({ businesses }: BusinessListProps) {
         <div className="col-span-full text-center py-12 text-muted-foreground">
           No businesses found. Add your first business to get started.
         </div>
+      )}
+
+      {selectedBusinessId && (
+        <OwnerSelectionDialog
+          businessId={selectedBusinessId}
+          businessName={filteredBusinesses.find((b) => b.id === selectedBusinessId)?.name || ""}
+          currentOwnerId={(filteredBusinesses.find((b) => b.id === selectedBusinessId) as any)?.owner_member_id}
+          currentOwnerName={currentOwnerInfo?.name}
+          onOwnerSelected={handleOwnerSelected}
+          isOpen={ownerDialogOpen}
+          onClose={() => {
+            setOwnerDialogOpen(false);
+            setSelectedBusinessId(null);
+          }}
+        />
       )}
     </div>
   );

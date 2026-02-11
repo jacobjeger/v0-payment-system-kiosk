@@ -185,6 +185,24 @@ export async function closeBillingCycle(cycleId: string) {
     return { success: true, invoiceCount: 0 };
   }
 
+  // Get all businesses with their owners for offset calculation
+  const { data: businessesWithOwners } = await supabase
+    .from("businesses")
+    .select("id, owner_member_id")
+    .not("owner_member_id", "is", null);
+
+  const ownerBusinessMap = new Map<string, string[]>();
+  if (businessesWithOwners) {
+    businessesWithOwners.forEach(b => {
+      if (b.owner_member_id) {
+        if (!ownerBusinessMap.has(b.owner_member_id)) {
+          ownerBusinessMap.set(b.owner_member_id, []);
+        }
+        ownerBusinessMap.get(b.owner_member_id)!.push(b.id);
+      }
+    });
+  }
+
   // Group transactions by member
   const memberTotals: Record<string, { total: number; count: number }> = {};
   for (const tx of transactions) {
@@ -195,14 +213,48 @@ export async function closeBillingCycle(cycleId: string) {
     memberTotals[tx.member_id].count += 1;
   }
 
-  // Create invoices for each member
-  const invoices = Object.entries(memberTotals).map(([memberId, data]) => ({
-    billing_cycle_id: cycleId,
-    member_id: memberId,
-    total_amount: data.total,
-    transaction_count: data.count,
-    status: "pending",
-  }));
+  // Create invoices for each member and apply owner offsets
+  const invoices = [];
+  const offsetTransactions = [];
+
+  for (const [memberId, data] of Object.entries(memberTotals)) {
+    let invoiceAmount = data.total;
+    
+    // Check if this member is a business owner - if so, deduct their balance from the invoice
+    if (ownerBusinessMap.has(memberId)) {
+      const { data: member } = await supabase
+        .from("members")
+        .select("balance")
+        .eq("id", memberId)
+        .single();
+
+      if (member && member.balance > 0) {
+        const offsetAmount = Math.min(invoiceAmount, member.balance);
+        invoiceAmount -= offsetAmount;
+
+        // Record the offset as a special transaction for audit
+        offsetTransactions.push({
+          member_id: memberId,
+          business_id: null,
+          amount: -offsetAmount,
+          balance_before: member.balance,
+          balance_after: member.balance - offsetAmount,
+          description: `Owner offset applied during billing cycle ${cycle.name}`,
+          source: "admin_panel",
+          billing_cycle_id: cycleId,
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    invoices.push({
+      billing_cycle_id: cycleId,
+      member_id: memberId,
+      total_amount: invoiceAmount,
+      transaction_count: data.count,
+      status: "pending",
+    });
+  }
 
   const { error: invoiceError } = await supabase.from("invoices").insert(invoices);
 
@@ -210,8 +262,12 @@ export async function closeBillingCycle(cycleId: string) {
     return { success: false, error: invoiceError.message };
   }
 
+  // Record offset transactions for audit trail
+  if (offsetTransactions.length > 0) {
+    await supabase.from("transactions").insert(offsetTransactions);
+  }
+
   // Reset balances to 0 for all members who had transactions in this cycle
-  // This is done after invoices are created so the invoiced amount is preserved
   const memberIds = Object.keys(memberTotals);
   if (memberIds.length > 0) {
     const { error: resetError } = await supabase
@@ -224,7 +280,6 @@ export async function closeBillingCycle(cycleId: string) {
 
     if (resetError) {
       console.error("Failed to reset member balances:", resetError);
-      // Don't fail the whole operation, just log the error
     }
   }
 

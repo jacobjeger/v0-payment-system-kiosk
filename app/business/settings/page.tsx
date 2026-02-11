@@ -388,3 +388,8 @@ export default function BusinessSettingsPage() {
             <Save className="w-4 h-4 mr-2" />
             {saving ? "Saving..." : "Save Business Settings"}
           </Button>
+        </form>
+      </main>
+    </div>
+  );
+}

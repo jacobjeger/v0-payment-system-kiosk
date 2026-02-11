@@ -61,18 +61,25 @@ export default function AdminMFAVerifyPage() {
     if (result.success) {
       // If "Remember Me" is checked, trust this device
       if (rememberDevice && deviceFingerprint) {
-        console.log("[v0] Trusting device with fingerprint:", deviceFingerprint);
         const deviceName = getDeviceName();
-        const trustResponse = await fetch("/api/admin/mfa/trust-device", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ adminId, deviceFingerprint, deviceName }),
-        });
-        const trustResult = await trustResponse.json();
-        console.log("[v0] Trust device result:", trustResult);
-        
-        if (!trustResult.success) {
-          console.error("[v0] Failed to trust device:", trustResult.error);
+        try {
+          const trustResponse = await fetch("/api/admin/mfa/trust-device", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              adminId, 
+              deviceFingerprint, 
+              deviceName,
+              expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+            }),
+          });
+          const trustResult = await trustResponse.json();
+          
+          if (!trustResult.success) {
+            console.error("[v0] Failed to trust device:", trustResult.error);
+          }
+        } catch (err) {
+          console.error("[v0] Error trusting device:", err);
         }
       }
       

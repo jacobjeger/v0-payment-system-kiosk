@@ -146,13 +146,22 @@ export async function checkAdminMFAStatus(email: string) {
 export async function isDeviceTrusted(adminId: string, deviceFingerprint: string) {
   const supabase = createAdminClient();
 
+  const now = new Date().toISOString();
+  
   const { data, error } = await supabase
     .from("trusted_devices")
-    .select("id")
+    .select("id, expires_at")
     .eq("admin_user_id", adminId)
     .eq("device_fingerprint", deviceFingerprint)
-    .single();
+    .maybeSingle();
 
+  // Check if device exists and hasn't expired
+  if (data && data.expires_at) {
+    const expiresAt = new Date(data.expires_at);
+    const isExpired = expiresAt < new Date();
+    return { trusted: !isExpired };
+  }
+  
   return { trusted: !!data && !error };
 }
 
@@ -160,12 +169,17 @@ export async function isDeviceTrusted(adminId: string, deviceFingerprint: string
 export async function trustDevice(adminId: string, deviceFingerprint: string, deviceName: string) {
   const supabase = createAdminClient();
 
+  // Set expiration to 30 days from now
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+
   const { error } = await supabase
     .from("trusted_devices")
     .upsert({
       admin_user_id: adminId,
       device_fingerprint: deviceFingerprint,
       device_name: deviceName,
+      expires_at: expiresAt.toISOString(),
       last_used_at: new Date().toISOString(),
     }, {
       onConflict: "admin_user_id,device_fingerprint"

@@ -346,6 +346,16 @@ export default function BusinessSettingsPage() {
 
           {/* Password Settings */}
           <Card>
+
+          <Button type="submit" disabled={saving} className="w-full">
+            <Save className="w-4 h-4 mr-2" />
+            {saving ? "Saving..." : "Save Business Settings"}
+          </Button>
+        </form>
+
+        {/* Password Settings Form - Separate from Business Settings Form */}
+        <form onSubmit={handleUpdatePassword} className="mt-8 space-y-6">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Lock className="w-5 h-5" />
@@ -356,7 +366,7 @@ export default function BusinessSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-password">New Password</Label>
                   <Input
@@ -391,24 +401,9 @@ export default function BusinessSettingsPage() {
                 <Button type="submit" disabled={savingPassword} className="w-full">
                   {savingPassword ? "Updating..." : "Update Password"}
                 </Button>
-              </form>
+              </div>
             </CardContent>
           </Card>
-
-          {message && (
-            <div className={`p-3 rounded-lg text-sm ${
-              message.includes("Error") 
-                ? "bg-destructive/10 text-destructive" 
-                : "bg-green-100 text-green-700"
-            }`}>
-              {message}
-            </div>
-          )}
-
-          <Button type="submit" disabled={saving} className="w-full">
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save Business Settings"}
-          </Button>
         </form>
       </main>
     </div>

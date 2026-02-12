@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X, Lock, Mail } from "lucide-react";
+import { ArrowLeft, Save, DollarSign, BarChart3, Plus, X, Lock, Mail, Image as ImageIcon } from "lucide-react";
 import type { Business } from "@/lib/types";
+import { BusinessIconUpload } from "@/components/business-icon-upload";
 
 export default function BusinessSettingsPage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function BusinessSettingsPage() {
   const [newAmount, setNewAmount] = useState("");
   const [activeDaysAverage, setActiveDaysAverage] = useState(false);
   const [notificationEmail, setNotificationEmail] = useState("");
+  const [iconUrl, setIconUrl] = useState<string | null>(null);
   
   // Password state
   const [newPassword, setNewPassword] = useState("");
@@ -57,6 +59,7 @@ export default function BusinessSettingsPage() {
           setPresetAmounts(data.preset_amounts || []);
           setActiveDaysAverage(data.active_days_average || false);
           setNotificationEmail(data.email || "");
+          setIconUrl(data.icon_url || null);
         }
       }
       
@@ -92,6 +95,7 @@ export default function BusinessSettingsPage() {
         preset_amounts: presetAmounts.length > 0 ? presetAmounts : null,
         active_days_average: activeDaysAverage,
         email: notificationEmail || null,
+        icon_url: iconUrl || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", business.id);
@@ -229,6 +233,13 @@ export default function BusinessSettingsPage() {
                   placeholder="Optional description"
                 />
               </div>
+              <BusinessIconUpload
+                businessId={business?.id || ""}
+                businessName={name}
+                currentIconUrl={iconUrl}
+                onUploadSuccess={(url) => setIconUrl(url)}
+                onUploadError={(error) => setMessage(`Icon upload error: ${error}`)}
+              />
             </CardContent>
           </Card>
 

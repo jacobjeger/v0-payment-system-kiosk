@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deleteBusiness, toggleBusinessStatus, updateBusinessFee, updateBusinessProfile, createBusinessAccount, sendBusinessMagicLink, sendBusinessPasswordReset, generateBusinessTempPassword, updateBusinessPresetAmounts, getPopularAmountsForBusiness } from "@/app/actions/admin";
 import { toggleBusinessTransactionPermission } from "@/app/actions/toggle-business-transaction-permission";
-import { Trash2, Monitor, TrendingUp, Receipt, Percent, Pencil, User, Mail, Phone, Save, X, Key, Send, Link2, Copy, Check, UserPlus, DollarSign, Sparkles, Plus, Loader2, Filter, ChevronDown, Calendar } from "lucide-react";
+import { Trash2, Monitor, TrendingUp, Receipt, Percent, Pencil, User, Mail, Phone, Save, X, Key, Send, Link2, Copy, Check, UserPlus, DollarSign, Sparkles, Plus, Loader2, Filter, ChevronDown, Calendar, Image as ImageIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Business, Transaction } from "@/lib/types";
+import { BusinessIconUpload } from "@/components/business-icon-upload";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +62,7 @@ export default function BusinessDetailPage({
     username: "",
     notificationEmail: "",
   });
+  const [iconUrl, setIconUrl] = useState<string | null>(null);
   const [accountAction, setAccountAction] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -158,8 +160,9 @@ export default function BusinessDetailPage({
       email: business.email || "",
       phone: business.phone || "",
       username: business.username || "",
-      notificationEmail: (business as any).notification_email || "",
+      notificationEmail: business.email || "",
     });
+    setIconUrl(business.icon_url || null);
     setEditingProfile(true);
   };
 
@@ -174,7 +177,7 @@ export default function BusinessDetailPage({
       email: profileForm.email || null,
       phone: profileForm.phone || null,
       username: profileForm.username || null,
-      notification_email: profileForm.notificationEmail || null,
+      icon_url: iconUrl,
     });
     setSavingProfile(false);
     setEditingProfile(false);
@@ -645,6 +648,15 @@ export default function BusinessDetailPage({
                   </div>
                 )}
               </div>
+              {editingProfile && (
+                <BusinessIconUpload
+                  businessId={business.id}
+                  businessName={business.name}
+                  currentIconUrl={iconUrl}
+                  onUploadSuccess={(url) => setIconUrl(url)}
+                  onUploadError={(error) => alert(`Icon upload error: ${error}`)}
+                />
+              )}
               {/* Account Management Section */}
               <div className="space-y-2 pt-4 border-t">
                 <Label className="flex items-center gap-2">

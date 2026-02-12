@@ -84,32 +84,10 @@ export function BusinessIconUpload({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <Label htmlFor="business-icon">Business Icon</Label>
         <p className="text-sm text-muted-foreground mb-3">Upload a custom icon for your business (PNG, JPG, GIF - max 5MB)</p>
-
-        {preview && (
-          <div className="mb-4 relative inline-block">
-            <div className="w-24 h-24 relative rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
-              <Image
-                src={preview}
-                alt={businessName}
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            </div>
-            <button
-              onClick={handleRemoveIcon}
-              disabled={uploading}
-              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 disabled:opacity-50"
-              title="Remove icon"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
 
         <div className="flex items-center gap-2">
           <input
@@ -132,8 +110,66 @@ export function BusinessIconUpload({
             <Upload className="w-4 h-4" />
             {uploading ? "Uploading..." : "Choose Image"}
           </Button>
+          {preview && (
+            <button
+              onClick={handleRemoveIcon}
+              disabled={uploading}
+              className="text-red-500 hover:text-red-700 disabled:opacity-50 text-sm"
+              title="Remove icon"
+            >
+              Remove
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Kiosk Preview */}
+      {preview && (
+        <div className="border rounded-lg p-6 bg-slate-50">
+          <p className="text-sm font-medium text-slate-700 mb-4">Kiosk Preview</p>
+          <div className="flex gap-6">
+            {/* Favorite businesses style */}
+            <div className="flex flex-col items-center">
+              <p className="text-xs text-slate-500 mb-3">Favorites Section</p>
+              <button className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 flex flex-col items-center gap-2 border border-emerald-200 w-24">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center overflow-hidden">
+                  <Image
+                    src={preview}
+                    alt={businessName}
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                </div>
+                <p className="font-medium text-stone-900 text-center text-xs line-clamp-2 max-w-[80px]">
+                  {businessName}
+                </p>
+              </button>
+            </div>
+
+            {/* All businesses style */}
+            <div className="flex flex-col items-center">
+              <p className="text-xs text-slate-500 mb-3">All Businesses Section</p>
+              <button className="bg-white rounded-xl p-4 flex flex-col items-center gap-2 border border-stone-200 w-24">
+                <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center overflow-hidden">
+                  <Image
+                    src={preview}
+                    alt={businessName}
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                </div>
+                <p className="font-medium text-stone-900 text-center text-xs line-clamp-2 max-w-[80px]">
+                  {businessName}
+                </p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { generateDeviceFingerprint } from "@/lib/device-fingerprint";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -35,8 +36,13 @@ export default function LoginPage() {
       .single();
 
     if (adminData?.mfa_enabled) {
-      // MFA is enabled - redirect to MFA verification page (outside admin layout)
-      router.push(`/auth/mfa-verify?email=${encodeURIComponent(email)}&admin_id=${adminData.id}`);
+      // Generate device fingerprint
+      const deviceFingerprint = generateDeviceFingerprint();
+      
+      // MFA is enabled - redirect to MFA verification page with device fingerprint
+      router.push(
+        `/auth/mfa-verify?email=${encodeURIComponent(email)}&admin_id=${adminData.id}&device=${encodeURIComponent(deviceFingerprint)}`
+      );
       return;
     }
 
@@ -46,63 +52,29 @@ export default function LoginPage() {
     setLoading(false);
   };
 
-  const handleMFAVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    const result = await verifyMFACode(email, mfaCode);
-
-    if (!result.success) {
-      setError(result.error || "Invalid verification code");
-      setLoading(false);
-      return;
-    }
-
-    // MFA verified, proceed to admin portal
-    router.push("/admin");
-    router.refresh();
-  };
-
-  const handleResendCode = async () => {
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-
-    const result = await sendMFACode(email);
-
-    if (result.success) {
-      setMessage("A new verification code has been sent");
-    } else {
-      setError(result.error || "Failed to resend code");
-    }
-
-    setLoading(false);
-  };
-
   const handleForgotPassword = async () => {
     if (!email) {
       setError("Please enter your email address first");
       return;
     }
-  setLoading(true);
-  setError(null);
-  setMessage(null);
-  
-  const response = await fetch("/api/admin/password-reset", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    
+    const response = await fetch("/api/admin/password-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
 
-  const result = await response.json();
-  
-  if (!result.success) {
-    setError(result.error || "Failed to send reset email");
-  } else {
-    setMessage(result.message || "Check your email for a password reset link");
-  }
-  setLoading(false);
+    const result = await response.json();
+    
+    if (!result.success) {
+      setError(result.error || "Failed to send reset email");
+    } else {
+      setMessage(result.message || "Check your email for a password reset link");
+    }
+    setLoading(false);
   };
 
   return (

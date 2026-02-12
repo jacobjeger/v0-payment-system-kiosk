@@ -3,7 +3,7 @@ import { trustDevice } from "@/app/actions/admin-mfa";
 
 export async function POST(request: Request) {
   try {
-    const { adminId, deviceFingerprint, deviceName } = await request.json();
+    const { adminId, deviceFingerprint, deviceName, expiresAt } = await request.json();
 
     if (!adminId || !deviceFingerprint || !deviceName) {
       return NextResponse.json(
@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     const result = await trustDevice(adminId, deviceFingerprint, deviceName);
     return NextResponse.json(result);
   } catch (error) {
+    console.error("[v0] Trust device error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to trust device" },
       { status: 500 }

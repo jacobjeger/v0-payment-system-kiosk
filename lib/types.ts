@@ -16,6 +16,7 @@ export interface Business {
   owner_member_id?: string | null
   username: string | null
   can_add_transactions?: boolean
+  icon_url?: string | null
   created_at: string
   updated_at: string
 }

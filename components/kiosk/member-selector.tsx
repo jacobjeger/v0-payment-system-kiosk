@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useMemo, useCallback, memo, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Search, Coffee } from "lucide-react";
+import { MorningKollelModal } from "./morning-kollel-modal";
 import type { Member } from "@/lib/types";
 
 interface MemberSelectorProps {
@@ -34,6 +35,7 @@ const MemberButton = memo(function MemberButton({
 
 export function MemberSelector({ members, onSelect }: MemberSelectorProps) {
   const [search, setSearch] = useState("");
+  const [showMorningKollel, setShowMorningKollel] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const letterRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -68,6 +70,16 @@ export function MemberSelector({ members, onSelect }: MemberSelectorProps) {
 
   return (
     <div className="flex flex-col h-full relative">
+      {/* Morning Kollel Button - Top Right */}
+      <button
+        onClick={() => setShowMorningKollel(true)}
+        className="absolute top-2 right-2 z-20 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg p-1.5 flex items-center gap-1 transition-all btn-press text-xs font-medium text-amber-900"
+        title="Log Morning Kollel coffee"
+      >
+        <Coffee className="w-3.5 h-3.5" />
+        <span>Kollel</span>
+      </button>
+
       {/* Header */}
       <div className="text-center mb-4 flex-shrink-0">
         <h2 className="text-lg font-semibold text-stone-900">Select Your Name</h2>
@@ -154,6 +166,13 @@ export function MemberSelector({ members, onSelect }: MemberSelectorProps) {
           </div>
         )}
       </div>
+
+      {/* Morning Kollel Modal */}
+      <MorningKollelModal
+        isOpen={showMorningKollel}
+        onClose={() => setShowMorningKollel(false)}
+        onSuccess={() => setShowMorningKollel(false)}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { Search, Store, Coffee, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Business, Member } from "@/lib/types";
+import Image from "next/image";
 
 interface BusinessSelectorProps {
   businesses: Business[];
@@ -178,8 +179,18 @@ export function BusinessSelector({ businesses, member, onSelect }: BusinessSelec
                     onClick={() => onSelect(business)}
                     className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 flex flex-col items-center gap-2 border border-emerald-200 hover:border-emerald-300 hover:shadow-md transition-all btn-press min-h-[80px]"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-                      {categoryIcons[business.category || "default"] || categoryIcons.default}
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 overflow-hidden">
+                      {business.icon_url ? (
+                        <Image
+                          src={business.icon_url}
+                          alt={business.name}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        categoryIcons[business.category || "default"] || categoryIcons.default
+                      )}
                     </div>
                     <p className="font-medium text-stone-900 text-center text-sm leading-tight line-clamp-2">
                       {business.name}
@@ -202,8 +213,18 @@ export function BusinessSelector({ businesses, member, onSelect }: BusinessSelec
                   onClick={() => onSelect(business)}
                   className="bg-white rounded-xl p-4 flex flex-col items-center gap-2 border border-stone-200 hover:border-stone-300 hover:shadow-sm transition-all btn-press min-h-[80px]"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-600">
-                    {categoryIcons[business.category || "default"] || categoryIcons.default}
+                  <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-600 overflow-hidden">
+                    {business.icon_url ? (
+                      <Image
+                        src={business.icon_url}
+                        alt={business.name}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      categoryIcons[business.category || "default"] || categoryIcons.default
+                    )}
                   </div>
                   <p className="font-medium text-stone-900 text-center text-sm leading-tight line-clamp-2">
                     {business.name}
